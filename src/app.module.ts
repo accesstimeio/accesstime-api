@@ -1,7 +1,7 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { CacheModule } from "@nestjs/cache-manager";
-import Joi from "joi";
+import * as Joi from "joi";
 
 import { SubgraphModule } from "./modules/subgraph/subgraph.module";
 import { DeploymentModule } from "./modules/deployment/deployment.module";
