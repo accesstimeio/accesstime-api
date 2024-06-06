@@ -1,13 +1,18 @@
 import { Controller, Get, Param, Query, UsePipes, ValidationPipe } from "@nestjs/common";
 import { DeploymentService } from "./deployment.service";
-import { ApiQuery } from "@nestjs/swagger";
+import { ApiQuery, ApiResponse } from "@nestjs/swagger";
 import { Address } from "src/helpers";
+import { LastDeploymentResponseDto } from "./dto";
 
 @UsePipes(new ValidationPipe())
 @Controller("deployment")
 export class DeploymentController {
     constructor(private readonly deploymentService: DeploymentService) {}
 
+    @ApiResponse({
+        type: LastDeploymentResponseDto,
+        isArray: true
+    })
     @Get("/last/:address")
     lastDeployments(@Param("address") address: Address) {
         return this.deploymentService.lastDeployments(address);

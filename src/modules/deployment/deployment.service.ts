@@ -1,11 +1,13 @@
 import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { Address, isAddress } from "src/helpers";
+import { SubgraphService } from "../subgraph/subgraph.service";
+import { LastDeploymentResponseDto } from "./dto";
 
 @Injectable()
 export class DeploymentService {
-    constructor() {}
+    constructor(private readonly subgraphService: SubgraphService) {}
 
-    async lastDeployments(address: Address) {
+    async lastDeployments(address: Address): Promise<LastDeploymentResponseDto[]> {
         const validAddress = isAddress(address);
 
         if (!validAddress) {
@@ -16,9 +18,8 @@ export class DeploymentService {
                 HttpStatus.BAD_REQUEST
             );
         }
-        console.log(address);
 
-        return true;
+        return this.subgraphService.lastDeployments(address);
     }
 
     async listDeployments(address: Address, page?: number) {
