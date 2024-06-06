@@ -1,6 +1,5 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
-import { CacheModule } from "@nestjs/cache-manager";
 import * as Joi from "joi";
 
 import { SubgraphModule } from "./modules/subgraph/subgraph.module";
@@ -16,10 +15,13 @@ const NODE_ENV = process.env.NODE_ENV;
             isGlobal: true,
             validationSchema: Joi.object({
                 SUBGRAPH_URL: Joi.string().required(),
-                LAST_DEPLOYMENTS_LIMIT: Joi.number().default(5)
+                LAST_DEPLOYMENTS_LIMIT: Joi.number().default(5),
+                LAST_DEPLOYMENTS_TTL: Joi.number().default(86400), // 1 day as seconds
+                REDIS_HOST: Joi.string().required(),
+                REDIS_PORT: Joi.number().required(),
+                REDIS_PASSWORD: Joi.string().required()
             })
         }),
-        CacheModule.register(),
         SubgraphModule,
         DeploymentModule,
         ProjectModule
