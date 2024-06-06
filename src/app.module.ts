@@ -15,7 +15,8 @@ const NODE_ENV = process.env.NODE_ENV;
             envFilePath: !NODE_ENV ? ".env" : `.env.${NODE_ENV}`,
             isGlobal: true,
             validationSchema: Joi.object({
-                SUBGRAPH_URL: Joi.string().required()
+                SUBGRAPH_URL: Joi.string().required(),
+                LAST_DEPLOYMENTS_LIMIT: Joi.number().default(5)
             })
         }),
         CacheModule.register(),
