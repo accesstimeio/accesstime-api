@@ -9,29 +9,9 @@ export class LastDeploymentResponseDto {
 
     @Expose()
     @ApiProperty()
-    extraTimes: string[];
-
-    @Expose()
-    @ApiProperty()
     id: Address;
 
     @Expose()
     @ApiProperty()
-    packages: string[];
-
-    @Expose()
-    @ApiProperty()
     paused: boolean;
-
-    @Expose()
-    @ApiProperty()
-    paymentMethods: Address[];
-
-    @Expose()
-    @ApiProperty()
-    prevOwner: Address;
-
-    @Expose()
-    @ApiProperty()
-    nextOwner: Address;
 }

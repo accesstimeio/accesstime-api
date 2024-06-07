@@ -6,15 +6,15 @@ import { LastDeploymentResponseDto } from "../deployment/dto";
 
 const LAST_DEPLOYMENTS_QUERY = gql`
     query LastDeployments($owner: String!, $limit: Int!) {
-        accessTimes(first: $limit, where: { owner: $owner }) {
+        accessTimes(
+            orderDirection: desc
+            orderBy: updateTimestamp
+            first: $limit
+            where: { owner: $owner }
+        ) {
             accessTimeId
-            extraTimes
             id
-            packages
             paused
-            paymentMethods
-            prevOwner
-            nextOwner
         }
     }
 `;
