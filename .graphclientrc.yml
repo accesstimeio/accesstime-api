@@ -1,0 +1,8 @@
+sources:
+  - name: accesstime
+    handler:
+      graphql:
+        endpoint: http://localhost:8000/subgraphs/name/accesstime
+plugins:
+  - pollingLive:
+      defaultInterval: 1000
