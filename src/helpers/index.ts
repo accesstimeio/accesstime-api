@@ -1,3 +1,7 @@
 import { isAddress, Address } from "./address";
 
-export { isAddress, Address };
+function isAsyncIterable<T>(obj: any): obj is AsyncIterable<T> {
+    return typeof obj[Symbol.asyncIterator] === "function";
+}
+
+export { isAddress, Address, isAsyncIterable };
