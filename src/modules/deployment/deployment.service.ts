@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Inject, Injectable } from "@nestjs/common";
+import { HttpException, HttpStatus, Inject, Injectable, forwardRef } from "@nestjs/common";
 import { Address, isAddress } from "src/helpers";
 import { SubgraphService } from "../subgraph/subgraph.service";
 import { LastDeploymentResponseDto } from "./dto";
@@ -8,6 +8,7 @@ import { CACHE_MANAGER, Cache } from "@nestjs/cache-manager";
 export class DeploymentService {
     constructor(
         @Inject(CACHE_MANAGER) private cacheService: Cache,
+        @Inject(forwardRef(() => SubgraphService))
         private readonly subgraphService: SubgraphService
     ) {}
 
@@ -38,6 +39,11 @@ export class DeploymentService {
 
             return lastDeployments;
         }
+    }
+
+    async removeLastDeployments(address: Address) {
+        const dataKey = `${address}-deployments-last`;
+        await this.cacheService.del(dataKey);
     }
 
     async listDeployments(address: Address, page?: number) {

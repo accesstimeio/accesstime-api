@@ -1,4 +1,4 @@
-import { Module } from "@nestjs/common";
+import { Module, forwardRef } from "@nestjs/common";
 import { DeploymentController } from "./deployment.controller";
 import { DeploymentService } from "./deployment.service";
 import { SubgraphModule } from "../subgraph/subgraph.module";
@@ -7,7 +7,7 @@ import * as redisStore from "cache-manager-redis-store";
 
 @Module({
     imports: [
-        SubgraphModule,
+        forwardRef(() => SubgraphModule),
         CacheModule.registerAsync({
             useFactory: () => ({
                 store: redisStore,
@@ -18,6 +18,7 @@ import * as redisStore from "cache-manager-redis-store";
         })
     ],
     controllers: [DeploymentController],
-    providers: [DeploymentService]
+    providers: [DeploymentService],
+    exports: [DeploymentService]
 })
 export class DeploymentModule {}
