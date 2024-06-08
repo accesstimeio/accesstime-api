@@ -2,7 +2,14 @@ import { Inject, Injectable, forwardRef } from "@nestjs/common";
 import { Address, isAsyncIterable } from "src/helpers";
 import { execute, subscribe } from "@graphclient/index";
 import { CACHE_MANAGER, Cache } from "@nestjs/cache-manager";
-import { LAST_DEPLOYMENTS_QUERY, LastDeploymentsResponse, SYNC_QUERY, SyncResponse } from "./query";
+import {
+    LAST_DEPLOYMENTS_QUERY,
+    LIST_DEPLOYMENTS_QUERY,
+    LastDeploymentsResponse,
+    ListDeploymentsResponse,
+    SYNC_QUERY,
+    SyncResponse
+} from "./query";
 import { DeploymentService } from "../deployment/deployment.service";
 
 @Injectable()
@@ -56,6 +63,22 @@ export class SubgraphService {
             throw new Error("Subgraph query failed!");
         }
         const { accessTimes }: { accessTimes: LastDeploymentsResponse[] } = result.data;
+
+        return accessTimes;
+    }
+
+    async listDeployments(address: Address, page?: number) {
+        const limit = Number(process.env.LIST_DEPLOYMENTS_LIMIT);
+        const skip = page ? page * limit : 0;
+        const result = await execute(LIST_DEPLOYMENTS_QUERY, {
+            owner: address,
+            limit,
+            skip
+        });
+        if (result.errors && result.errors.length != 0) {
+            throw new Error("Subgraph query failed!");
+        }
+        const { accessTimes }: { accessTimes: ListDeploymentsResponse[] } = result.data;
 
         return accessTimes;
     }

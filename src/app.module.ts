@@ -17,6 +17,8 @@ const NODE_ENV = process.env.NODE_ENV;
                 SUBGRAPH_URL: Joi.string().required(),
                 LAST_DEPLOYMENTS_LIMIT: Joi.number().default(5),
                 LAST_DEPLOYMENTS_TTL: Joi.number().default(86400), // 1 day as seconds
+                LIST_DEPLOYMENTS_LIMIT: Joi.number().default(15),
+                LIST_DEPLOYMENTS_TTL: Joi.number().default(86400), // 1 day as seconds
                 REDIS_HOST: Joi.string().required(),
                 REDIS_PORT: Joi.number().required(),
                 REDIS_PASSWORD: Joi.string().required()

@@ -3,6 +3,7 @@ import { Address, isAddress } from "src/helpers";
 import { SubgraphService } from "../subgraph/subgraph.service";
 import { LastDeploymentResponseDto } from "./dto";
 import { CACHE_MANAGER, Cache } from "@nestjs/cache-manager";
+import { ListDeploymentResponseDto } from "./dto/list-deployment.dto";
 
 @Injectable()
 export class DeploymentService {
@@ -46,7 +47,7 @@ export class DeploymentService {
         await this.cacheService.del(dataKey);
     }
 
-    async listDeployments(address: Address, page?: number) {
+    async listDeployments(address: Address, page?: number): Promise<ListDeploymentResponseDto[]> {
         const validAddress = isAddress(address);
         const requestedPage = page ? page : 0;
 
@@ -58,9 +59,24 @@ export class DeploymentService {
                 HttpStatus.BAD_REQUEST
             );
         }
-        console.log(address);
-        console.log(requestedPage);
 
-        return true;
+        const dataKey = `${address}-deployments-page-${requestedPage}`;
+
+        const cachedData = await this.cacheService.get<ListDeploymentResponseDto[]>(dataKey);
+
+        if (cachedData) {
+            return cachedData;
+        } else {
+            const listDeployments = await this.subgraphService.listDeployments(
+                address,
+                requestedPage
+            );
+
+            await this.cacheService.set(dataKey, listDeployments, {
+                ttl: Number(process.env.LIST_DEPLOYMENTS_TTL)
+            });
+
+            return listDeployments;
+        }
     }
 }
