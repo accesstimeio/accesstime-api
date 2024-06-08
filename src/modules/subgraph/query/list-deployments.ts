@@ -1,5 +1,4 @@
 import { gql } from "graphql-request";
-import { LastDeploymentResponseDto } from "src/modules/deployment/dto";
 
 export const LIST_DEPLOYMENTS_QUERY = gql`
     query ListDeployments($owner: String!, $limit: Int!, $skip: Int!) {
@@ -16,5 +15,3 @@ export const LIST_DEPLOYMENTS_QUERY = gql`
         }
     }
 `;
-
-export interface ListDeploymentsResponse extends LastDeploymentResponseDto {}

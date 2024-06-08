@@ -3,14 +3,15 @@ import { Address, isAsyncIterable } from "src/helpers";
 import { execute, subscribe } from "@graphclient/index";
 import { CACHE_MANAGER, Cache } from "@nestjs/cache-manager";
 import {
+    COUNT_DEPLOYMENTS_QUERY,
+    CountDeploymentsResponse,
     LAST_DEPLOYMENTS_QUERY,
     LIST_DEPLOYMENTS_QUERY,
-    LastDeploymentsResponse,
-    ListDeploymentsResponse,
     SYNC_QUERY,
     SyncResponse
 } from "./query";
 import { DeploymentService } from "../deployment/deployment.service";
+import { DeploymentDto } from "../deployment/dto";
 
 @Injectable()
 export class SubgraphService {
@@ -35,6 +36,8 @@ export class SubgraphService {
                         if (BigInt(updateTimestamp) > BigInt(lastUpdateTimestamp)) {
                             // job
                             await this.deploymentsService.removeLastDeployments(accessTime.owner);
+                            await this.deploymentsService.removeListDeployments(accessTime.owner);
+                            // update last update timestamp
                             await this.cacheService.set(
                                 "lastUpdateTimestamp",
                                 accessTimes[0].updateTimestamp,
@@ -62,7 +65,7 @@ export class SubgraphService {
         if (result.errors && result.errors.length != 0) {
             throw new Error("Subgraph query failed!");
         }
-        const { accessTimes }: { accessTimes: LastDeploymentsResponse[] } = result.data;
+        const { accessTimes }: { accessTimes: DeploymentDto[] } = result.data;
 
         return accessTimes;
     }
@@ -78,8 +81,20 @@ export class SubgraphService {
         if (result.errors && result.errors.length != 0) {
             throw new Error("Subgraph query failed!");
         }
-        const { accessTimes }: { accessTimes: ListDeploymentsResponse[] } = result.data;
+        const { accessTimes }: { accessTimes: DeploymentDto[] } = result.data;
 
         return accessTimes;
+    }
+
+    async countDeployments(address: Address) {
+        const result = await execute(COUNT_DEPLOYMENTS_QUERY, {
+            owner: address
+        });
+        if (result.errors && result.errors.length != 0) {
+            throw new Error("Subgraph query failed!");
+        }
+        const { owner }: { owner: CountDeploymentsResponse } = result.data;
+
+        return owner;
     }
 }

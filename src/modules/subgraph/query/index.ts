@@ -1,12 +1,13 @@
-import { LAST_DEPLOYMENTS_QUERY, LastDeploymentsResponse } from "./last-deployments";
+import { LAST_DEPLOYMENTS_QUERY } from "./last-deployments";
 import { SYNC_QUERY, SyncResponse } from "./sync";
-import { LIST_DEPLOYMENTS_QUERY, ListDeploymentsResponse } from "./list-deployments";
+import { LIST_DEPLOYMENTS_QUERY } from "./list-deployments";
+import { COUNT_DEPLOYMENTS_QUERY, CountDeploymentsResponse } from "./count-deployments";
 
 export {
     LAST_DEPLOYMENTS_QUERY,
-    LastDeploymentsResponse,
     SYNC_QUERY,
     SyncResponse,
     LIST_DEPLOYMENTS_QUERY,
-    ListDeploymentsResponse
+    COUNT_DEPLOYMENTS_QUERY,
+    CountDeploymentsResponse
 };

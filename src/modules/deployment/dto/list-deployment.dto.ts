@@ -1,17 +1,23 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { Expose } from "class-transformer";
-import { Address } from "src/helpers";
+import { Expose, Type } from "class-transformer";
+import { ValidateNested } from "class-validator";
+import { DeploymentDto } from "./deployment.dto";
 
 export class ListDeploymentResponseDto {
     @Expose()
     @ApiProperty()
-    accessTimeId: string;
+    page: number;
 
     @Expose()
     @ApiProperty()
-    id: Address;
+    maxPage: number;
 
     @Expose()
-    @ApiProperty()
-    paused: boolean;
+    @ApiProperty({
+        type: DeploymentDto,
+        isArray: true
+    })
+    @ValidateNested({ each: true })
+    @Type(() => DeploymentDto)
+    deployments: DeploymentDto[];
 }
