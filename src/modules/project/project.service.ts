@@ -33,7 +33,7 @@ export class ProjectService {
             const project = results[0];
 
             await this.cacheService.set(dataKey, project, {
-                ttl: Number(process.env.LIST_DEPLOYMENTS_TTL)
+                ttl: Number(process.env.PROJECT_TTL)
             });
 
             return project;
