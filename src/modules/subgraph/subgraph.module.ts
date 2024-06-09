@@ -3,6 +3,7 @@ import { SubgraphService } from "./subgraph.service";
 import { CacheModule } from "@nestjs/cache-manager";
 import * as redisStore from "cache-manager-redis-store";
 import { DeploymentModule } from "../deployment/deployment.module";
+import { ProjectModule } from "../project/project.module";
 
 @Module({
     imports: [
@@ -14,7 +15,8 @@ import { DeploymentModule } from "../deployment/deployment.module";
                 password: process.env.REDIS_PASSWORD
             })
         }),
-        forwardRef(() => DeploymentModule)
+        forwardRef(() => DeploymentModule),
+        forwardRef(() => ProjectModule)
     ],
     controllers: [],
     providers: [SubgraphService],

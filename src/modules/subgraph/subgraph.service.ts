@@ -7,18 +7,23 @@ import {
     CountDeploymentsResponse,
     LAST_DEPLOYMENTS_QUERY,
     LIST_DEPLOYMENTS_QUERY,
+    PROJECT_BY_ID_QUERY,
     SYNC_QUERY,
     SyncResponse
 } from "./query";
 import { DeploymentService } from "../deployment/deployment.service";
 import { DeploymentDto } from "../deployment/dto";
+import { ProjectResponseDto } from "../project/dto";
+import { ProjectService } from "../project/project.service";
 
 @Injectable()
 export class SubgraphService {
     constructor(
         @Inject(CACHE_MANAGER) private cacheService: Cache,
         @Inject(forwardRef(() => DeploymentService))
-        private readonly deploymentsService: DeploymentService
+        private readonly deploymentsService: DeploymentService,
+        @Inject(forwardRef(() => ProjectService))
+        private readonly projectService: ProjectService
     ) {
         this.sync();
     }
@@ -37,6 +42,9 @@ export class SubgraphService {
                             // job
                             await this.deploymentsService.removeLastDeployments(accessTime.owner);
                             await this.deploymentsService.removeListDeployments(accessTime.owner);
+                            await this.projectService.removeProjectById(
+                                Number(accessTime.accessTimeId)
+                            );
                             // update last update timestamp
                             await this.cacheService.set(
                                 "lastUpdateTimestamp",
@@ -96,5 +104,17 @@ export class SubgraphService {
         const { owner }: { owner: CountDeploymentsResponse } = result.data;
 
         return owner;
+    }
+
+    async projectById(id: number) {
+        const result = await execute(PROJECT_BY_ID_QUERY, {
+            id
+        });
+        if (result.errors && result.errors.length != 0) {
+            throw new Error("Subgraph query failed!");
+        }
+        const { accessTimes }: { accessTimes: ProjectResponseDto[] } = result.data;
+
+        return accessTimes;
     }
 }
