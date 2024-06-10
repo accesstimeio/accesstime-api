@@ -14,7 +14,6 @@ const NODE_ENV = process.env.NODE_ENV;
             envFilePath: !NODE_ENV ? ".env" : `.env.${NODE_ENV}`,
             isGlobal: true,
             validationSchema: Joi.object({
-                SUBGRAPH_URL: Joi.string().required(),
                 LAST_DEPLOYMENTS_LIMIT: Joi.number().default(5),
                 LAST_DEPLOYMENTS_TTL: Joi.number().default(86400), // 1 day as seconds
                 LIST_DEPLOYMENTS_LIMIT: Joi.number().default(15),
