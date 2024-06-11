@@ -35,6 +35,12 @@ export class SubgraphService {
                 let lastUpdateTimestamp =
                     (await this.cacheService.get<string>("lastUpdateTimestamp")) ?? "0";
                 for await (const result of results) {
+                    if (!result.data) {
+                        for (const error of result.errors) {
+                            console.error(error);
+                        }
+                        throw new Error("Subgraph query response is not as expected!");
+                    }
                     const { accessTimes }: { accessTimes: SyncResponse[] } = result.data;
                     for (const accessTime of accessTimes) {
                         const updateTimestamp = accessTime.updateTimestamp;
@@ -61,6 +67,7 @@ export class SubgraphService {
                 console.error("Error during subscription:", error);
             } finally {
                 console.log("Subscription finished");
+                this.sync();
             }
         }
     }
