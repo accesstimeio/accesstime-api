@@ -5,6 +5,8 @@ import * as Joi from "joi";
 import { SubgraphModule } from "./modules/subgraph/subgraph.module";
 import { DeploymentModule } from "./modules/deployment/deployment.module";
 import { ProjectModule } from "./modules/project/project.module";
+import { AppController } from "./app.controller";
+import { AppService } from "./app.service";
 
 const NODE_ENV = process.env.NODE_ENV;
 
@@ -28,7 +30,7 @@ const NODE_ENV = process.env.NODE_ENV;
         DeploymentModule,
         ProjectModule
     ],
-    controllers: [],
-    providers: []
+    controllers: [AppController],
+    providers: [AppService]
 })
 export class AppModule {}
