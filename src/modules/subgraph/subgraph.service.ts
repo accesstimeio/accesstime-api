@@ -101,7 +101,7 @@ export class SubgraphService {
         return accessTimes;
     }
 
-    async countDeployments(address: Address) {
+    async countDeployments(address: Address): Promise<CountDeploymentsResponse> {
         const result = await execute(COUNT_DEPLOYMENTS_QUERY, {
             owner: address
         });
@@ -110,7 +110,7 @@ export class SubgraphService {
         }
         const { owner }: { owner: CountDeploymentsResponse } = result.data;
 
-        return owner;
+        return owner == null ? { deploymentCount: "0" } : owner;
     }
 
     async projectById(id: number) {

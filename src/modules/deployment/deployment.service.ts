@@ -67,6 +67,13 @@ export class DeploymentService {
             limit - ((requestedPage + 1) * limit - deploymentCount) > 0 ? true : false;
 
         if (!requestable) {
+            if (requestedPage == 0) {
+                return {
+                    page: 0,
+                    maxPage: 0,
+                    deployments: []
+                };
+            }
             throw new HttpException(
                 {
                     errors: { message: "Requested page exceeds page limit." }
