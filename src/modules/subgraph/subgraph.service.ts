@@ -1,16 +1,16 @@
 import { Inject, Injectable, forwardRef } from "@nestjs/common";
 import { Address, isAsyncIterable } from "src/helpers";
-import { execute, subscribe } from "@graphclient/index";
-import { CACHE_MANAGER, Cache } from "@nestjs/cache-manager";
 import {
-    COUNT_DEPLOYMENTS_QUERY,
-    CountDeploymentsResponse,
-    LAST_DEPLOYMENTS_QUERY,
-    LIST_DEPLOYMENTS_QUERY,
-    PROJECT_BY_ID_QUERY,
-    SYNC_QUERY,
-    SyncResponse
-} from "./query";
+    execute,
+    subscribe,
+    CountDeploymentsDocument,
+    SyncDocument,
+    LastDeploymentsDocument,
+    ListDeploymentsDocument,
+    ProjectByIdDocument
+} from "@graphclient/index";
+import { CACHE_MANAGER, Cache } from "@nestjs/cache-manager";
+import { SyncResponse, CountDeploymentsResponse } from "./query";
 import { DeploymentService } from "../deployment/deployment.service";
 import { DeploymentDto } from "../deployment/dto";
 import { ProjectResponseDto } from "../project/dto";
@@ -29,7 +29,7 @@ export class SubgraphService {
     }
 
     async sync() {
-        const results = await subscribe(SYNC_QUERY);
+        const results = await subscribe(SyncDocument);
         if (isAsyncIterable(results)) {
             try {
                 let lastUpdateTimestamp =
@@ -73,7 +73,7 @@ export class SubgraphService {
     }
 
     async lastDeployments(address: Address) {
-        const result = await execute(LAST_DEPLOYMENTS_QUERY, {
+        const result = await execute(LastDeploymentsDocument, {
             owner: address,
             limit: Number(process.env.LAST_DEPLOYMENTS_LIMIT)
         });
@@ -88,7 +88,7 @@ export class SubgraphService {
     async listDeployments(address: Address, page?: number) {
         const limit = Number(process.env.LIST_DEPLOYMENTS_LIMIT);
         const skip = page ? page * limit : 0;
-        const result = await execute(LIST_DEPLOYMENTS_QUERY, {
+        const result = await execute(ListDeploymentsDocument, {
             owner: address,
             limit,
             skip
@@ -102,7 +102,7 @@ export class SubgraphService {
     }
 
     async countDeployments(address: Address): Promise<CountDeploymentsResponse> {
-        const result = await execute(COUNT_DEPLOYMENTS_QUERY, {
+        const result = await execute(CountDeploymentsDocument, {
             owner: address
         });
         if (result.errors && result.errors.length != 0) {
@@ -114,7 +114,7 @@ export class SubgraphService {
     }
 
     async projectById(id: number) {
-        const result = await execute(PROJECT_BY_ID_QUERY, {
+        const result = await execute(ProjectByIdDocument, {
             id
         });
         if (result.errors && result.errors.length != 0) {

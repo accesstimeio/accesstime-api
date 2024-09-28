@@ -38,7 +38,7 @@
     "rxjs": "^7.8.1"
   },
   "devDependencies": {
-    "@graphprotocol/client-cli": "^3.0.3",
+    "@graphprotocol/client-cli": "3.0.7",
     "@nestjs/cli": "^10.0.0",
     "@nestjs/schematics": "^10.0.0",
     "@nestjs/testing": "^10.0.0",

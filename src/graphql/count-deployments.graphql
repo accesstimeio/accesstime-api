@@ -1,0 +1,5 @@
+query CountDeployments($owner: ID!) {
+    owner(id: $owner) {
+        deploymentCount
+    }
+}

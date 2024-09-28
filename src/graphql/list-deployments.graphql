@@ -1,0 +1,13 @@
+query ListDeployments($owner: Bytes!, $limit: Int!, $skip: Int!) {
+    accessTimes(
+        orderDirection: desc
+        orderBy: updateTimestamp
+        first: $limit
+        skip: $skip
+        where: { owner: $owner }
+    ) {
+        accessTimeId
+        id
+        paused
+    }
+}
