@@ -23,7 +23,8 @@ const NODE_ENV = process.env.NODE_ENV;
                 PROJECT_TTL: Joi.number().default(172800), // 2 day as seconds
                 REDIS_HOST: Joi.string().required(),
                 REDIS_PORT: Joi.number().required(),
-                REDIS_PASSWORD: Joi.string().required()
+                REDIS_PASSWORD: Joi.string().required(),
+                SUBGRAPH_URL: Joi.string().required()
             })
         }),
         SubgraphModule,
