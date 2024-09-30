@@ -7,6 +7,8 @@ import { DeploymentModule } from "./modules/deployment/deployment.module";
 import { ProjectModule } from "./modules/project/project.module";
 import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
+import { ScheduleModule } from "@nestjs/schedule";
+import { CronModule } from "./modules/cron/cron.module";
 
 const NODE_ENV = process.env.NODE_ENV;
 
@@ -27,9 +29,11 @@ const NODE_ENV = process.env.NODE_ENV;
                 SUBGRAPH_URL: Joi.string().required()
             })
         }),
+        ScheduleModule.forRoot(),
         SubgraphModule,
         DeploymentModule,
-        ProjectModule
+        ProjectModule,
+        CronModule
     ],
     controllers: [AppController],
     providers: [AppService]
