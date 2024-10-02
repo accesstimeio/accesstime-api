@@ -1,9 +1,9 @@
 import { Inject, Injectable, forwardRef } from "@nestjs/common";
 import { Address } from "src/helpers";
 import { CACHE_MANAGER, Cache } from "@nestjs/cache-manager";
-import { SyncResponse, CountDeploymentsResponse } from "./query";
+import { SyncResponse, CountDeploymentsResponse, RatesDocument } from "./query";
 import { DeploymentService } from "../deployment/deployment.service";
-import { DeploymentDto } from "../deployment/dto";
+import { DeploymentDto, RatesDto } from "../deployment/dto";
 import { ProjectResponseDto } from "../project/dto";
 import { ProjectService } from "../project/project.service";
 import {
@@ -114,6 +114,17 @@ export class SubgraphService {
             const { accessTimes } = result as { accessTimes: ProjectResponseDto[] };
 
             return accessTimes;
+        } catch (_err) {
+            throw new Error("Subgraph query failed!");
+        }
+    }
+
+    async rates(): Promise<RatesDto[]> {
+        try {
+            const result = await this.getClient().request(RatesDocument, {});
+            const { factoryRates } = result as { factoryRates: RatesDto[] };
+
+            return factoryRates == null ? [] : factoryRates;
         } catch (_err) {
             throw new Error("Subgraph query failed!");
         }

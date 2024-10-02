@@ -82,3 +82,12 @@ export const SyncDocument = gql`
         }
     }
 `;
+
+export const RatesDocument = gql`
+    query Rates {
+        factoryRates {
+            id
+            rate
+        }
+    }
+`;

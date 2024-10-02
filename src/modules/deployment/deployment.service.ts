@@ -1,7 +1,7 @@
 import { HttpException, HttpStatus, Inject, Injectable, forwardRef } from "@nestjs/common";
 import { Address, isAddress } from "src/helpers";
 import { SubgraphService } from "../subgraph/subgraph.service";
-import { LastDeploymentResponseDto, ListDeploymentResponseDto } from "./dto";
+import { LastDeploymentResponseDto, ListDeploymentResponseDto, RatesDto } from "./dto";
 import { CACHE_MANAGER, Cache } from "@nestjs/cache-manager";
 
 @Injectable()
@@ -118,6 +118,24 @@ export class DeploymentService {
         for (let i = 0; i < maxPage + 1; i++) {
             const dataKey = `${address}-deployments-page-${i}`;
             await this.cacheService.del(dataKey);
+        }
+    }
+
+    async rates(): Promise<RatesDto[]> {
+        const dataKey = `factory-rates`;
+
+        const cachedData = await this.cacheService.get<RatesDto[]>(dataKey);
+
+        if (cachedData) {
+            return cachedData;
+        } else {
+            const rates = await this.subgraphService.rates();
+
+            await this.cacheService.set(dataKey, rates, {
+                ttl: Number(process.env.RATES_TTL)
+            });
+
+            return rates;
         }
     }
 }
