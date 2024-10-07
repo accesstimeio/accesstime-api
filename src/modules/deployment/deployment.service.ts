@@ -48,7 +48,7 @@ export class DeploymentService {
 
     async listDeployments(address: Address, page?: number): Promise<ListDeploymentResponseDto> {
         const validAddress = isAddress(address);
-        const requestedPage = page ? page : 0;
+        const requestedPage = page ? Number(page) : 0;
 
         if (!validAddress) {
             throw new HttpException(
