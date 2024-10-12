@@ -1,0 +1,10 @@
+query Sync @live {
+    accessTimes(orderDirection: desc, orderBy: updateTimestamp, first: 25) {
+        accessTimeId
+        id
+        owner
+        prevOwner
+        nextOwner
+        updateTimestamp
+    }
+}

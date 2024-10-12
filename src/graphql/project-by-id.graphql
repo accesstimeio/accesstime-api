@@ -1,0 +1,12 @@
+query ProjectById($id: BigInt!) {
+    accessTimes(where: { accessTimeId: $id }) {
+        id
+        extraTimes
+        nextOwner
+        owner
+        packages
+        paused
+        paymentMethods
+        prevOwner
+    }
+}

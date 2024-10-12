@@ -2,6 +2,7 @@ import { HttpException, HttpStatus, Inject, Injectable, forwardRef } from "@nest
 import { SubgraphService } from "../subgraph/subgraph.service";
 import { CACHE_MANAGER, Cache } from "@nestjs/cache-manager";
 import { ProjectResponseDto } from "./dto";
+import { Address } from "src/helpers";
 
 @Injectable()
 export class ProjectService {
@@ -36,8 +37,17 @@ export class ProjectService {
                 ttl: Number(process.env.PROJECT_TTL)
             });
 
+            await this.updateProjectOwner(id, project.owner);
+
             return project;
         }
+    }
+
+    async updateProjectOwner(id: number, owner: Address) {
+        const dataKey = `project-id-${id}-owner`;
+        await this.cacheService.set(dataKey, owner.toLowerCase(), {
+            ttl: 0
+        });
     }
 
     async removeProjectById(id: number) {

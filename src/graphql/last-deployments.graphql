@@ -1,0 +1,12 @@
+query LastDeployments($owner: Bytes!, $limit: Int!) {
+    accessTimes(
+        orderDirection: desc
+        orderBy: updateTimestamp
+        first: $limit
+        where: { owner: $owner }
+    ) {
+        accessTimeId
+        id
+        paused
+    }
+}

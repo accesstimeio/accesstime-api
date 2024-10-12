@@ -1,7 +1,7 @@
 import { HttpException, HttpStatus, Inject, Injectable, forwardRef } from "@nestjs/common";
 import { Address, isAddress } from "src/helpers";
 import { SubgraphService } from "../subgraph/subgraph.service";
-import { LastDeploymentResponseDto, ListDeploymentResponseDto } from "./dto";
+import { LastDeploymentResponseDto, ListDeploymentResponseDto, RatesDto } from "./dto";
 import { CACHE_MANAGER, Cache } from "@nestjs/cache-manager";
 
 @Injectable()
@@ -24,7 +24,7 @@ export class DeploymentService {
             );
         }
 
-        const dataKey = `${address}-deployments-last`;
+        const dataKey = `${address.toLowerCase()}-deployments-last`;
 
         const cachedData = await this.cacheService.get<LastDeploymentResponseDto[]>(dataKey);
 
@@ -42,13 +42,13 @@ export class DeploymentService {
     }
 
     async removeLastDeployments(address: Address) {
-        const dataKey = `${address}-deployments-last`;
+        const dataKey = `${address.toLowerCase()}-deployments-last`;
         await this.cacheService.del(dataKey);
     }
 
     async listDeployments(address: Address, page?: number): Promise<ListDeploymentResponseDto> {
         const validAddress = isAddress(address);
-        const requestedPage = page ? page : 0;
+        const requestedPage = page ? Number(page) : 0;
 
         if (!validAddress) {
             throw new HttpException(
@@ -67,6 +67,13 @@ export class DeploymentService {
             limit - ((requestedPage + 1) * limit - deploymentCount) > 0 ? true : false;
 
         if (!requestable) {
+            if (requestedPage == 0) {
+                return {
+                    page: 0,
+                    maxPage: 0,
+                    deployments: []
+                };
+            }
             throw new HttpException(
                 {
                     errors: { message: "Requested page exceeds page limit." }
@@ -75,7 +82,7 @@ export class DeploymentService {
             );
         }
 
-        const dataKey = `${address}-deployments-page-${requestedPage}`;
+        const dataKey = `${address.toLowerCase()}-deployments-page-${requestedPage}`;
 
         const cachedData = await this.cacheService.get<ListDeploymentResponseDto>(dataKey);
 
@@ -109,8 +116,26 @@ export class DeploymentService {
         const maxPage = Math.floor(deploymentCount / limit);
 
         for (let i = 0; i < maxPage + 1; i++) {
-            const dataKey = `${address}-deployments-page-${i}`;
+            const dataKey = `${address.toLowerCase()}-deployments-page-${i}`;
             await this.cacheService.del(dataKey);
+        }
+    }
+
+    async rates(): Promise<RatesDto[]> {
+        const dataKey = `factory-rates`;
+
+        const cachedData = await this.cacheService.get<RatesDto[]>(dataKey);
+
+        if (cachedData) {
+            return cachedData;
+        } else {
+            const rates = await this.subgraphService.rates();
+
+            await this.cacheService.set(dataKey, rates, {
+                ttl: Number(process.env.RATES_TTL)
+            });
+
+            return rates;
         }
     }
 }

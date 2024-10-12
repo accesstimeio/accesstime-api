@@ -2,7 +2,7 @@ import { Controller, Get, Param, Query, UsePipes, ValidationPipe } from "@nestjs
 import { DeploymentService } from "./deployment.service";
 import { ApiQuery, ApiResponse } from "@nestjs/swagger";
 import { Address } from "src/helpers";
-import { LastDeploymentResponseDto, ListDeploymentResponseDto } from "./dto";
+import { LastDeploymentResponseDto, ListDeploymentResponseDto, RatesDto } from "./dto";
 
 @UsePipes(new ValidationPipe())
 @Controller("deployment")
@@ -29,5 +29,14 @@ export class DeploymentController {
     @Get("/list/:address")
     listDeployments(@Param("address") address: Address, @Query("page") page?: number) {
         return this.deploymentService.listDeployments(address, page);
+    }
+
+    @ApiResponse({
+        type: RatesDto,
+        isArray: true
+    })
+    @Get("/rates")
+    rates() {
+        return this.deploymentService.rates();
     }
 }

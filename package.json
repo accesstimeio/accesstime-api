@@ -7,7 +7,6 @@
   "license": "UNLICENSED",
   "scripts": {
     "build": "nest build",
-    "graphclient-build": "graphclient build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "export NODE_ENV=development && nest start",
     "start:dev": "export NODE_ENV=development && nest start --watch",
@@ -26,6 +25,7 @@
     "@nestjs/config": "^3.2.2",
     "@nestjs/core": "^10.0.0",
     "@nestjs/platform-express": "^10.0.0",
+    "@nestjs/schedule": "^4.1.1",
     "@nestjs/swagger": "^7.3.1",
     "cache-manager": "^4.1.0",
     "cache-manager-redis-store": "^2.0.0",
@@ -38,7 +38,6 @@
     "rxjs": "^7.8.1"
   },
   "devDependencies": {
-    "@graphprotocol/client-cli": "^3.0.3",
     "@nestjs/cli": "^10.0.0",
     "@nestjs/schematics": "^10.0.0",
     "@nestjs/testing": "^10.0.0",

@@ -7,6 +7,8 @@ import { DeploymentModule } from "./modules/deployment/deployment.module";
 import { ProjectModule } from "./modules/project/project.module";
 import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
+import { ScheduleModule } from "@nestjs/schedule";
+import { CronModule } from "./modules/cron/cron.module";
 
 const NODE_ENV = process.env.NODE_ENV;
 
@@ -21,14 +23,18 @@ const NODE_ENV = process.env.NODE_ENV;
                 LIST_DEPLOYMENTS_LIMIT: Joi.number().default(15),
                 LIST_DEPLOYMENTS_TTL: Joi.number().default(86400), // 1 day as seconds
                 PROJECT_TTL: Joi.number().default(172800), // 2 day as seconds
+                RATES_TTL: Joi.number().default(86400), // 1 day as seconds
                 REDIS_HOST: Joi.string().required(),
                 REDIS_PORT: Joi.number().required(),
-                REDIS_PASSWORD: Joi.string().required()
+                REDIS_PASSWORD: Joi.string().required(),
+                SUBGRAPH_URL: Joi.string().required()
             })
         }),
+        ScheduleModule.forRoot(),
         SubgraphModule,
         DeploymentModule,
-        ProjectModule
+        ProjectModule,
+        CronModule
     ],
     controllers: [AppController],
     providers: [AppService]
