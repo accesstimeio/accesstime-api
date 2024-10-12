@@ -6,7 +6,7 @@ import { Cron, CronExpression } from "@nestjs/schedule";
 export class CronService {
     constructor(private readonly subgraphService: SubgraphService) {}
 
-    @Cron(CronExpression.EVERY_5_MINUTES)
+    @Cron(CronExpression.EVERY_5_SECONDS)
     subgraphSync() {
         this.subgraphService.sync();
     }

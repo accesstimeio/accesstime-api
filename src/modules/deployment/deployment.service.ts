@@ -24,7 +24,7 @@ export class DeploymentService {
             );
         }
 
-        const dataKey = `${address}-deployments-last`;
+        const dataKey = `${address.toLowerCase()}-deployments-last`;
 
         const cachedData = await this.cacheService.get<LastDeploymentResponseDto[]>(dataKey);
 
@@ -42,7 +42,7 @@ export class DeploymentService {
     }
 
     async removeLastDeployments(address: Address) {
-        const dataKey = `${address}-deployments-last`;
+        const dataKey = `${address.toLowerCase()}-deployments-last`;
         await this.cacheService.del(dataKey);
     }
 
@@ -82,7 +82,7 @@ export class DeploymentService {
             );
         }
 
-        const dataKey = `${address}-deployments-page-${requestedPage}`;
+        const dataKey = `${address.toLowerCase()}-deployments-page-${requestedPage}`;
 
         const cachedData = await this.cacheService.get<ListDeploymentResponseDto>(dataKey);
 
@@ -116,7 +116,7 @@ export class DeploymentService {
         const maxPage = Math.floor(deploymentCount / limit);
 
         for (let i = 0; i < maxPage + 1; i++) {
-            const dataKey = `${address}-deployments-page-${i}`;
+            const dataKey = `${address.toLowerCase()}-deployments-page-${i}`;
             await this.cacheService.del(dataKey);
         }
     }

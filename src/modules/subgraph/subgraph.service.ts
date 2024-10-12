@@ -18,6 +18,7 @@ import { GraphQLClient } from "graphql-request";
 @Injectable()
 export class SubgraphService {
     private client: GraphQLClient | null = null;
+    private syncBusy: boolean = false;
     constructor(
         @Inject(CACHE_MANAGER) private cacheService: Cache,
         @Inject(forwardRef(() => DeploymentService))
@@ -35,29 +36,53 @@ export class SubgraphService {
 
     async sync() {
         try {
-            const result = await this.getClient().request(SyncDocument);
-            let lastUpdateTimestamp =
-                (await this.cacheService.get<string>("lastUpdateTimestamp")) ?? "0";
-            const { accessTimes } = result as { accessTimes: SyncResponse[] };
-            for (const accessTime of accessTimes) {
-                const updateTimestamp = accessTime.updateTimestamp;
-                if (BigInt(updateTimestamp) > BigInt(lastUpdateTimestamp)) {
-                    // job
-                    await this.deploymentsService.removeLastDeployments(accessTime.owner);
-                    await this.deploymentsService.removeListDeployments(accessTime.owner);
-                    await this.projectService.removeProjectById(Number(accessTime.accessTimeId));
-                    // update last update timestamp
-                    await this.cacheService.set(
-                        "lastUpdateTimestamp",
-                        accessTimes[0].updateTimestamp,
-                        {
-                            ttl: 0
+            if (!this.syncBusy) {
+                this.syncBusy = true;
+                const result = await this.getClient().request(SyncDocument);
+                let lastUpdateTimestamp =
+                    (await this.cacheService.get<string>("lastUpdateTimestamp")) ?? "0";
+                const { accessTimes } = result as { accessTimes: SyncResponse[] };
+                const reversedAccessTimes = accessTimes.reverse();
+                for (const accessTime of reversedAccessTimes) {
+                    const { owner, prevOwner, updateTimestamp, accessTimeId } = accessTime;
+                    if (BigInt(updateTimestamp) > BigInt(lastUpdateTimestamp)) {
+                        const lastOwner =
+                            (await this.cacheService.get<Address>(
+                                `project-id-${accessTimeId}-owner`
+                            )) ?? null;
+                        // current owner update job
+                        await this.deploymentsService.removeLastDeployments(owner);
+                        await this.deploymentsService.removeListDeployments(owner);
+                        await this.projectService.removeProjectById(Number(accessTimeId));
+                        // if owner transferred, clean both
+                        if (lastOwner.toLowerCase() != owner.toLowerCase()) {
+                            const deleteThis =
+                                lastOwner != null
+                                    ? lastOwner.toLowerCase()
+                                    : prevOwner.toLowerCase();
+                            await this.deploymentsService.removeLastDeployments(
+                                deleteThis as Address
+                            );
+                            await this.deploymentsService.removeListDeployments(
+                                deleteThis as Address
+                            );
+
+                            await this.projectService.updateProjectOwner(
+                                Number(accessTimeId),
+                                owner
+                            );
                         }
-                    );
-                    lastUpdateTimestamp = updateTimestamp;
+                        // update last update timestamp
+                        await this.cacheService.set("lastUpdateTimestamp", updateTimestamp, {
+                            ttl: 0
+                        });
+                        lastUpdateTimestamp = updateTimestamp;
+                    }
                 }
+                this.syncBusy = false;
             }
         } catch (_err) {
+            this.syncBusy = false;
             throw new Error("Subgraph query failed!");
         }
     }
