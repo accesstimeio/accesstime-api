@@ -14,10 +14,12 @@ import {
     ProjectByIdDocument
 } from "./query";
 import { GraphQLClient } from "graphql-request";
+import { SUPPORTED_CHAIN_IDS } from "src/common";
 
 @Injectable()
 export class SubgraphService {
-    private client: GraphQLClient | null = null;
+    private client: { [key: number]: GraphQLClient | null } = {};
+    private clientUrls: { [key: number]: string } = {};
     private syncBusy: boolean = false;
     constructor(
         @Inject(CACHE_MANAGER) private cacheService: Cache,
@@ -25,13 +27,19 @@ export class SubgraphService {
         private readonly deploymentsService: DeploymentService,
         @Inject(forwardRef(() => ProjectService))
         private readonly projectService: ProjectService
-    ) {}
+    ) {
+        const subgraphUrls = process.env.SUBGRAPH_URL.split(",");
+        SUPPORTED_CHAIN_IDS.forEach((chainId, index) => {
+            this.client[chainId] = null;
+            this.clientUrls[chainId] = subgraphUrls[index];
+        });
+    }
 
-    private getClient() {
-        if (this.client == null) {
-            this.client = new GraphQLClient(process.env.SUBGRAPH_URL);
+    private getClient(chainId: number) {
+        if (this.client[chainId] == null) {
+            this.client[chainId] = new GraphQLClient(this.clientUrls[chainId]);
         }
-        return this.client;
+        return this.client[chainId];
     }
 
     async sync() {
@@ -39,7 +47,7 @@ export class SubgraphService {
             if (!this.syncBusy) {
                 const chainId = 84532; // temporary
                 this.syncBusy = true;
-                const result = await this.getClient().request(SyncDocument);
+                const result = await this.getClient(chainId).request(SyncDocument);
                 let lastUpdateTimestamp =
                     (await this.cacheService.get<string>("lastUpdateTimestamp")) ?? "0";
                 const { accessTimes } = result as { accessTimes: SyncResponse[] };
@@ -93,7 +101,7 @@ export class SubgraphService {
 
     async lastDeployments(chainId: number, address: Address) {
         try {
-            const result = await this.getClient().request(LastDeploymentsDocument, {
+            const result = await this.getClient(chainId).request(LastDeploymentsDocument, {
                 owner: address,
                 limit: Number(process.env.LAST_DEPLOYMENTS_LIMIT)
             });
@@ -109,7 +117,7 @@ export class SubgraphService {
         try {
             const limit = Number(process.env.LIST_DEPLOYMENTS_LIMIT);
             const skip = page ? page * limit : 0;
-            const result = await this.getClient().request(ListDeploymentsDocument, {
+            const result = await this.getClient(chainId).request(ListDeploymentsDocument, {
                 owner: address,
                 limit,
                 skip
@@ -124,7 +132,7 @@ export class SubgraphService {
 
     async countDeployments(chainId: number, address: Address): Promise<CountDeploymentsResponse> {
         try {
-            const result = await this.getClient().request(CountDeploymentsDocument, {
+            const result = await this.getClient(chainId).request(CountDeploymentsDocument, {
                 owner: address
             });
             const { owner } = result as { owner: CountDeploymentsResponse };
@@ -137,7 +145,7 @@ export class SubgraphService {
 
     async projectById(chainId: number, id: number) {
         try {
-            const result = await this.getClient().request(ProjectByIdDocument, {
+            const result = await this.getClient(chainId).request(ProjectByIdDocument, {
                 id
             });
             const { accessTimes } = result as { accessTimes: ProjectResponseDto[] };
@@ -150,7 +158,7 @@ export class SubgraphService {
 
     async rates(chainId: number): Promise<RatesDto[]> {
         try {
-            const result = await this.getClient().request(RatesDocument, {});
+            const result = await this.getClient(chainId).request(RatesDocument, {});
             const { factoryRates } = result as { factoryRates: RatesDto[] };
 
             return factoryRates == null ? [] : factoryRates;
