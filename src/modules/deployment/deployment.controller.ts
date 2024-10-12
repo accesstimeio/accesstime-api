@@ -13,8 +13,8 @@ export class DeploymentController {
         type: LastDeploymentResponseDto,
         isArray: true
     })
-    @Get("/last/:address")
-    lastDeployments(@Param("address") address: Address) {
+    @Get("/last/:chainId/:address")
+    lastDeployments(@Param("chainId") chainId: number, @Param("address") address: Address) {
         return this.deploymentService.lastDeployments(address);
     }
 
@@ -26,8 +26,12 @@ export class DeploymentController {
     @ApiResponse({
         type: ListDeploymentResponseDto
     })
-    @Get("/list/:address")
-    listDeployments(@Param("address") address: Address, @Query("page") page?: number) {
+    @Get("/list/:chainId/:address")
+    listDeployments(
+        @Param("chainId") chainId: number,
+        @Param("address") address: Address,
+        @Query("page") page?: number
+    ) {
         return this.deploymentService.listDeployments(address, page);
     }
 
@@ -35,8 +39,8 @@ export class DeploymentController {
         type: RatesDto,
         isArray: true
     })
-    @Get("/rates")
-    rates() {
+    @Get("/:chainId/rates")
+    rates(@Param("chainId") chainId: number) {
         return this.deploymentService.rates();
     }
 }

@@ -11,8 +11,8 @@ export class ProjectController {
     @ApiResponse({
         type: ProjectResponseDto
     })
-    @Get("/:id")
-    getProjectById(@Param("id") id: number) {
+    @Get("/:chainId/:id")
+    getProjectById(@Param("chainId") chainId: number, @Param("id") id: number) {
         return this.projectService.getProjectById(id);
     }
 }
