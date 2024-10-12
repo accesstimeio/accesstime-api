@@ -13,6 +13,6 @@ export class ProjectController {
     })
     @Get("/:chainId/:id")
     getProjectById(@Param("chainId") chainId: number, @Param("id") id: number) {
-        return this.projectService.getProjectById(id);
+        return this.projectService.getProjectById(chainId, id);
     }
 }

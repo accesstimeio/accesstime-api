@@ -37,6 +37,7 @@ export class SubgraphService {
     async sync() {
         try {
             if (!this.syncBusy) {
+                const chainId = 84532; // temporary
                 this.syncBusy = true;
                 const result = await this.getClient().request(SyncDocument);
                 let lastUpdateTimestamp =
@@ -51,9 +52,9 @@ export class SubgraphService {
                                 `project-id-${accessTimeId}-owner`
                             )) ?? null;
                         // current owner update job
-                        await this.deploymentsService.removeLastDeployments(owner);
-                        await this.deploymentsService.removeListDeployments(owner);
-                        await this.projectService.removeProjectById(Number(accessTimeId));
+                        await this.deploymentsService.removeLastDeployments(chainId, owner);
+                        await this.deploymentsService.removeListDeployments(chainId, owner);
+                        await this.projectService.removeProjectById(chainId, Number(accessTimeId));
                         // if owner transferred, clean both
                         if (lastOwner.toLowerCase() != owner.toLowerCase()) {
                             const deleteThis =
@@ -61,13 +62,16 @@ export class SubgraphService {
                                     ? lastOwner.toLowerCase()
                                     : prevOwner.toLowerCase();
                             await this.deploymentsService.removeLastDeployments(
+                                chainId,
                                 deleteThis as Address
                             );
                             await this.deploymentsService.removeListDeployments(
+                                chainId,
                                 deleteThis as Address
                             );
 
                             await this.projectService.updateProjectOwner(
+                                chainId,
                                 Number(accessTimeId),
                                 owner
                             );
@@ -87,7 +91,7 @@ export class SubgraphService {
         }
     }
 
-    async lastDeployments(address: Address) {
+    async lastDeployments(chainId: number, address: Address) {
         try {
             const result = await this.getClient().request(LastDeploymentsDocument, {
                 owner: address,
@@ -101,7 +105,7 @@ export class SubgraphService {
         }
     }
 
-    async listDeployments(address: Address, page?: number) {
+    async listDeployments(chainId: number, address: Address, page?: number) {
         try {
             const limit = Number(process.env.LIST_DEPLOYMENTS_LIMIT);
             const skip = page ? page * limit : 0;
@@ -118,7 +122,7 @@ export class SubgraphService {
         }
     }
 
-    async countDeployments(address: Address): Promise<CountDeploymentsResponse> {
+    async countDeployments(chainId: number, address: Address): Promise<CountDeploymentsResponse> {
         try {
             const result = await this.getClient().request(CountDeploymentsDocument, {
                 owner: address
@@ -131,7 +135,7 @@ export class SubgraphService {
         }
     }
 
-    async projectById(id: number) {
+    async projectById(chainId: number, id: number) {
         try {
             const result = await this.getClient().request(ProjectByIdDocument, {
                 id
@@ -144,7 +148,7 @@ export class SubgraphService {
         }
     }
 
-    async rates(): Promise<RatesDto[]> {
+    async rates(chainId: number): Promise<RatesDto[]> {
         try {
             const result = await this.getClient().request(RatesDocument, {});
             const { factoryRates } = result as { factoryRates: RatesDto[] };

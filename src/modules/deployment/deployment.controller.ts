@@ -15,7 +15,7 @@ export class DeploymentController {
     })
     @Get("/last/:chainId/:address")
     lastDeployments(@Param("chainId") chainId: number, @Param("address") address: Address) {
-        return this.deploymentService.lastDeployments(address);
+        return this.deploymentService.lastDeployments(chainId, address);
     }
 
     @ApiQuery({
@@ -32,7 +32,7 @@ export class DeploymentController {
         @Param("address") address: Address,
         @Query("page") page?: number
     ) {
-        return this.deploymentService.listDeployments(address, page);
+        return this.deploymentService.listDeployments(chainId, address, page);
     }
 
     @ApiResponse({
@@ -41,6 +41,6 @@ export class DeploymentController {
     })
     @Get("/:chainId/rates")
     rates(@Param("chainId") chainId: number) {
-        return this.deploymentService.rates();
+        return this.deploymentService.rates(chainId);
     }
 }

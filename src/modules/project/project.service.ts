@@ -12,15 +12,15 @@ export class ProjectService {
         private readonly subgraphService: SubgraphService
     ) {}
 
-    async getProjectById(id: number) {
-        const dataKey = `project-id-${id}`;
+    async getProjectById(chainId: number, id: number) {
+        const dataKey = `${chainId}-project-id-${id}`;
 
         const cachedData = await this.cacheService.get<ProjectResponseDto>(dataKey);
 
         if (cachedData) {
             return cachedData;
         } else {
-            const results = await this.subgraphService.projectById(id);
+            const results = await this.subgraphService.projectById(chainId, id);
 
             if (!results[0]) {
                 throw new HttpException(
@@ -37,21 +37,21 @@ export class ProjectService {
                 ttl: Number(process.env.PROJECT_TTL)
             });
 
-            await this.updateProjectOwner(id, project.owner);
+            await this.updateProjectOwner(chainId, id, project.owner);
 
             return project;
         }
     }
 
-    async updateProjectOwner(id: number, owner: Address) {
-        const dataKey = `project-id-${id}-owner`;
+    async updateProjectOwner(chainId: number, id: number, owner: Address) {
+        const dataKey = `${chainId}-project-id-${id}-owner`;
         await this.cacheService.set(dataKey, owner.toLowerCase(), {
             ttl: 0
         });
     }
 
-    async removeProjectById(id: number) {
-        const dataKey = `project-id-${id}`;
+    async removeProjectById(chainId: number, id: number) {
+        const dataKey = `${chainId}-project-id-${id}`;
         await this.cacheService.del(dataKey);
     }
 }
