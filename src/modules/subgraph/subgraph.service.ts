@@ -64,7 +64,7 @@ export class SubgraphService {
                         await this.deploymentsService.removeListDeployments(chainId, owner);
                         await this.projectService.removeProjectById(chainId, Number(accessTimeId));
                         // if owner transferred, clean both
-                        if (lastOwner.toLowerCase() != owner.toLowerCase()) {
+                        if (lastOwner?.toLowerCase() != owner.toLowerCase()) {
                             const deleteThis =
                                 lastOwner != null
                                     ? lastOwner.toLowerCase()
