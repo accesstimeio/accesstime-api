@@ -93,9 +93,9 @@ export class SubgraphService {
                 }
                 this.syncBusy = false;
             }
-        } catch (_err) {
+        } catch (err) {
             this.syncBusy = false;
-            throw new Error("Subgraph query failed!");
+            console.error("Subgraph query failed!", err);
         }
     }
 

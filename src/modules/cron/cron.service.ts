@@ -8,10 +8,6 @@ export class CronService {
 
     @Cron(CronExpression.EVERY_5_SECONDS)
     subgraphSync() {
-        try {
-            this.subgraphService.sync();
-        } catch (err) {
-            console.log(err);
-        }
+        this.subgraphService.sync();
     }
 }
