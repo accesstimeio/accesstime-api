@@ -4,7 +4,7 @@ import { ApiQuery, ApiResponse } from "@nestjs/swagger";
 import { Address } from "src/helpers";
 import { LastDeploymentResponseDto, ListDeploymentResponseDto, RatesDto } from "./dto";
 
-@UsePipes(new ValidationPipe())
+@UsePipes(new ValidationPipe({ transform: true }))
 @Controller("deployment")
 export class DeploymentController {
     constructor(private readonly deploymentService: DeploymentService) {}

@@ -1,10 +1,13 @@
 import { MiddlewareConsumer, Module, NestModule } from "@nestjs/common";
-import { PortalController } from "./portal.controller";
-import { PortalService } from "./portal.service";
+
 import ChainIdCheckMiddleware from "src/common/middlewares/chain-id-check.middleware";
 
+import { SubgraphModule } from "../subgraph/subgraph.module";
+import { PortalController } from "./portal.controller";
+import { PortalService } from "./portal.service";
+
 @Module({
-    imports: [],
+    imports: [SubgraphModule],
     controllers: [PortalController],
     providers: [PortalService]
 })

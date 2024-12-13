@@ -3,7 +3,7 @@ import { ProjectService } from "./project.service";
 import { ApiResponse } from "@nestjs/swagger";
 import { ProjectResponseDto } from "./dto";
 
-@UsePipes(new ValidationPipe())
+@UsePipes(new ValidationPipe({ transform: true }))
 @Controller("project")
 export class ProjectController {
     constructor(private readonly projectService: ProjectService) {}

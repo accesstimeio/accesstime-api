@@ -1,6 +1,7 @@
-import { Controller, Param, Post } from "@nestjs/common";
+import { Controller, Param, Post, UsePipes, ValidationPipe } from "@nestjs/common";
 import { PortalCreatorService } from "./portal-creator.service";
 
+@UsePipes(new ValidationPipe({ transform: true }))
 @Controller("portal-creator")
 export class PortalCreatorController {
     constructor(private readonly portalCreatorService: PortalCreatorService) {}

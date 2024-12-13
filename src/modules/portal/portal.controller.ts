@@ -1,7 +1,12 @@
-import { Controller, Get, Param, Query, UsePipes, ValidationPipe } from "@nestjs/common";
-import { PortalService } from "./portal.service";
+import { Controller, Get, Param, Post, Query, UsePipes, ValidationPipe } from "@nestjs/common";
 
-@UsePipes(new ValidationPipe())
+import { SUPPORTED_PORTAL_SORT_TYPE } from "src/common";
+
+import { PortalService } from "./portal.service";
+import { ApiQuery, ApiResponse } from "@nestjs/swagger";
+import { ExploreResponseDto } from "./dto";
+
+@UsePipes(new ValidationPipe({ transform: true }))
 @Controller("portal")
 export class PortalController {
     constructor(private readonly portalService: PortalService) {}
@@ -11,9 +16,26 @@ export class PortalController {
         return true;
     }
 
+    @ApiQuery({
+        name: "page",
+        type: Number,
+        required: false
+    })
+    @ApiQuery({
+        name: "sort",
+        type: Number,
+        required: false
+    })
+    @ApiResponse({
+        type: ExploreResponseDto
+    })
     @Get("/explore/:chainId")
-    getExplore(@Param("chainId") chainId: number, @Query("page") page: number) {
-        return [chainId, page];
+    getExplore(
+        @Param("chainId") chainId: number,
+        @Query("page") page: number,
+        @Query("sort") sort: string
+    ) {
+        return this.portalService.getExplore(chainId, page, sort as SUPPORTED_PORTAL_SORT_TYPE);
     }
 
     @Get("/favorites/:chainId")
@@ -30,6 +52,11 @@ export class PortalController {
         // project-content
         // project-packages, if available
         // project-votes
+        return [chainId, id];
+    }
+
+    @Post("/project/:chainId/:id/toggle-favorite")
+    toogleFavorite(@Param("chainId") chainId: number, @Param("id") id: number) {
         return [chainId, id];
     }
 }
