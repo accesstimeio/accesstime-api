@@ -7,8 +7,10 @@ async function bootstrap() {
 
     const allowlist = [
         "http://localhost:5173",
+        "http://localhost:3000",
         "https://accesstime.io",
-        "https://app.accesstime.io"
+        "https://app.accesstime.io",
+        "https://portal.accesstime.io"
     ];
     const corsOptionsDelegate = function (req: any, callback: any) {
         let corsOptions: { origin: boolean };

@@ -4,7 +4,7 @@ import { ProjectService } from "./project.service";
 import { SubgraphModule } from "../subgraph/subgraph.module";
 import { CacheModule } from "@nestjs/cache-manager";
 import * as redisStore from "cache-manager-redis-store";
-import ChainIdCheckMiddleware from "src/common/middlewares/chainIdCheck.middleware";
+import ChainIdCheckMiddleware from "src/common/middlewares/chain-id-check.middleware";
 
 @Module({
     imports: [

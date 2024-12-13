@@ -9,6 +9,8 @@ import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
 import { ScheduleModule } from "@nestjs/schedule";
 import { CronModule } from "./modules/cron/cron.module";
+import { PortalModule } from "./modules/portal/portal.module";
+import { PortalCreatorModule } from "./modules/portal-creator/portal-creator.module";
 
 const NODE_ENV = process.env.NODE_ENV;
 
@@ -34,7 +36,9 @@ const NODE_ENV = process.env.NODE_ENV;
         SubgraphModule,
         DeploymentModule,
         ProjectModule,
-        CronModule
+        CronModule,
+        PortalModule,
+        PortalCreatorModule
     ],
     controllers: [AppController],
     providers: [AppService]
