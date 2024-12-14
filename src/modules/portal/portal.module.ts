@@ -1,7 +1,8 @@
-import { MiddlewareConsumer, Module, NestModule } from "@nestjs/common";
+import { MiddlewareConsumer, Module, NestModule, RequestMethod } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 
 import ChainIdCheckMiddleware from "src/common/middlewares/chain-id-check.middleware";
+import SignatureCheckMiddleware from "src/common/middlewares/signature-check.middleware";
 
 import { PortalController } from "./portal.controller";
 import { PortalService } from "./portal.service";
@@ -23,6 +24,17 @@ import { SubgraphModule } from "../subgraph/subgraph.module";
 })
 export class PortalModule implements NestModule {
     configure(consumer: MiddlewareConsumer) {
-        consumer.apply(ChainIdCheckMiddleware).forRoutes(PortalController);
+        consumer
+            .apply(ChainIdCheckMiddleware)
+            .exclude({ path: "portal/featureds", method: RequestMethod.GET })
+            .forRoutes(PortalController);
+        consumer
+            .apply(SignatureCheckMiddleware)
+            .exclude(
+                { path: "portal/featureds", method: RequestMethod.GET },
+                { path: "portal/explore/:chainId", method: RequestMethod.GET },
+                { path: "portal/project/:chainId/:id", method: RequestMethod.GET }
+            )
+            .forRoutes(PortalController);
     }
 }

@@ -2,6 +2,7 @@ import { NestFactory } from "@nestjs/core";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 
 import { AppModule } from "./app.module";
+import { API_VERSION } from "./common";
 
 async function bootstrap() {
     const app = await NestFactory.create(AppModule);
@@ -29,8 +30,8 @@ async function bootstrap() {
 
     const config = new DocumentBuilder()
         .setTitle("AccessTime")
-        .setDescription("Dashboard API")
-        .setVersion("0.1.0")
+        .setDescription("API")
+        .setVersion(API_VERSION)
         .build();
     const document = SwaggerModule.createDocument(app, config);
     SwaggerModule.setup("api", app, document);

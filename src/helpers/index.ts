@@ -1,4 +1,7 @@
-const aWeek = 60 * 60 * 24 * 7; // seconds * minutes * hours * 7 day
-const getEpochWeek = () => Math.floor(Math.floor(Date.now() / 1000) / aWeek);
+import { WEEK_IN_SECONDS } from "src/common";
 
-export { getEpochWeek };
+const getEpochWeek = () => Math.floor(Math.floor(Date.now() / 1000) / WEEK_IN_SECONDS);
+
+const aWeekAgo = () => Math.floor(Date.now() / 1000) - WEEK_IN_SECONDS;
+
+export { getEpochWeek, aWeekAgo };
