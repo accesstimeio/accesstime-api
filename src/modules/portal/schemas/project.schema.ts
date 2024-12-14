@@ -22,6 +22,9 @@ export class Project {
     @Prop({ required: true })
     chainUpdateTimestamp: number;
 
+    @Prop({ required: true })
+    address: Address;
+
     @Prop({ default: null })
     avatar: string | null;
 

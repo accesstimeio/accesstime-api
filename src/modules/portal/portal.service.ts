@@ -14,6 +14,7 @@ import { ProjectFavorite } from "./schemas/project-favorite.schema";
 import { ExploreResponseDto, ProjectCardDto, ProjectDto } from "./dto";
 
 import { SubgraphService } from "../subgraph/subgraph.service";
+import { UserFavoritesResponseDto } from "./dto/user-favorites.dto";
 
 @Injectable()
 export class PortalService {
@@ -147,6 +148,63 @@ export class PortalService {
         return { countProjects, maxPage: Math.floor(countProjects / limit), projects };
     }
 
+    async getFavorites(
+        chainId: number,
+        user: Address,
+        page?: number
+    ): Promise<UserFavoritesResponseDto> {
+        const queryPage = page ?? 0;
+        const limit = Number(process.env.PAGE_ITEM_LIMIT);
+        const skip = page ? page * limit : 0;
+
+        const countUserFavorites = await this.projectFavoriteModel.countDocuments({
+            chainId,
+            user
+        });
+
+        const requestable =
+            limit - ((queryPage + 1) * limit - countUserFavorites) > 0 ? true : false;
+
+        if (!requestable) {
+            throw new HttpException(
+                {
+                    errors: { message: "Requested page exceeds page limit." }
+                },
+                HttpStatus.EXPECTATION_FAILED
+            );
+        }
+
+        const userFavorites = await this.projectFavoriteModel
+            .find({ chainId, user })
+            .limit(limit)
+            .skip(skip)
+            .select("id")
+            .exec();
+
+        const userFavoritedProjectIds = userFavorites.map((favorite) => favorite.id);
+
+        const userFavoriteProjectDocuments = await this.projectModel
+            .find()
+            .where("id")
+            .in(userFavoritedProjectIds)
+            .select(["address", "avatar"])
+            .exec();
+
+        const projects: ProjectCardDto[] = userFavoriteProjectDocuments.map((project) => ({
+            id: project.address,
+            avatar: project.avatar,
+            votePoint: 0,
+            voteParticipantCount: 0,
+            isFavorited: true
+        }));
+
+        return {
+            countProjects: countUserFavorites,
+            maxPage: Math.floor(countUserFavorites / limit),
+            projects
+        };
+    }
+
     async getProjectById(chainId: number, id: number, user?: Address): Promise<ProjectDto> {
         const projectFromChain = await this.subgraphService.projectById(chainId, id);
 
@@ -170,7 +228,8 @@ export class PortalService {
             project = new this.projectModel({
                 id,
                 chainId,
-                chainUpdateTimestamp: 0
+                chainUpdateTimestamp: 0,
+                address: projectAddress
             });
 
             requiredSave = true;

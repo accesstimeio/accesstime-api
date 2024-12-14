@@ -52,7 +52,7 @@ export class PortalController {
     @Get("/favorites/:chainId")
     getFavorites(@Param("chainId") chainId: number, @Query("page") page: number) {
         // signature required
-        return [chainId, page];
+        return this.portalService.getFavorites(chainId, "0x123", page);
     }
 
     @Get("/project/:chainId/:id")
