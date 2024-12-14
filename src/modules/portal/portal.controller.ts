@@ -7,7 +7,7 @@ import { ApiQuery, ApiResponse } from "@nestjs/swagger";
 import { ExploreResponseDto } from "./dto";
 
 @UsePipes(new ValidationPipe({ transform: true }))
-@Controller("portal")
+@Controller()
 export class PortalController {
     constructor(private readonly portalService: PortalService) {}
 

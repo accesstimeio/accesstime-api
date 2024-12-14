@@ -2,7 +2,7 @@ import { Controller, Param, Post, UsePipes, ValidationPipe } from "@nestjs/commo
 import { PortalCreatorService } from "./portal-creator.service";
 
 @UsePipes(new ValidationPipe({ transform: true }))
-@Controller("portal-creator")
+@Controller()
 export class PortalCreatorController {
     constructor(private readonly portalCreatorService: PortalCreatorService) {}
 
@@ -34,5 +34,15 @@ export class PortalCreatorController {
     updateProjectPackages(@Param("chainId") chainId: number, @Param("id") id: number) {
         // signature required
         return [chainId, id];
+    }
+
+    @Post("/update-project-package-content/:chainId/:id/:packageId")
+    updateProjectPackageContent(
+        @Param("chainId") chainId: number,
+        @Param("id") id: number,
+        @Param("packageId") packageId: number
+    ) {
+        // signature required
+        return [chainId, id, packageId];
     }
 }

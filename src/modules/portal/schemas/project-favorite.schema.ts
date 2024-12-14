@@ -6,10 +6,10 @@ export type ProjectFavoriteDocument = HydratedDocument<ProjectFavorite>;
 
 @Schema()
 export class ProjectFavorite {
-    @Prop({ required: true })
+    @Prop({ required: true, index: true })
     id: number;
 
-    @Prop({ required: true })
+    @Prop({ required: true, index: true })
     chainId: number;
 
     @Prop({ required: true })

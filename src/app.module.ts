@@ -12,6 +12,7 @@ import { CronModule } from "./modules/cron/cron.module";
 import { PortalModule } from "./modules/portal/portal.module";
 import { PortalCreatorModule } from "./modules/portal-creator/portal-creator.module";
 import { MongooseModule } from "@nestjs/mongoose";
+import { RouterModule } from "@nestjs/core";
 
 const NODE_ENV = process.env.NODE_ENV;
 
@@ -37,6 +38,7 @@ const NODE_ENV = process.env.NODE_ENV;
         ScheduleModule.forRoot(),
         MongooseModule.forRootAsync({
             useFactory: () => ({
+                dbName: "api",
                 uri: process.env.MONGO_URI
             })
         }),
@@ -45,7 +47,19 @@ const NODE_ENV = process.env.NODE_ENV;
         ProjectModule,
         CronModule,
         PortalModule,
-        PortalCreatorModule
+        PortalCreatorModule,
+        RouterModule.register([
+            {
+                path: "portal",
+                module: PortalModule,
+                children: [
+                    {
+                        path: "creator",
+                        module: PortalCreatorModule
+                    }
+                ]
+            }
+        ])
     ],
     controllers: [AppController],
     providers: [AppService]
