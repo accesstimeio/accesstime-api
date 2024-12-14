@@ -5,6 +5,8 @@ import { SUPPORTED_PORTAL_SORT_TYPE } from "src/common";
 
 import { PortalService } from "./portal.service";
 import { ExploreResponseDto } from "./dto";
+import { Address } from "viem";
+import { Signer } from "src/signer.decorator";
 
 @UsePipes(new ValidationPipe({ transform: true }))
 @Controller()
@@ -30,17 +32,17 @@ export class PortalController {
         type: ExploreResponseDto
     })
     @Get("/explore/:chainId")
-    getExplore(
+    async getExplore(
         @Param("chainId") chainId: number,
         @Query("page") page: number,
-        @Query("sort") sort: string
+        @Query("sort") sort: string,
+        @Signer(false) signer: Address
     ) {
-        // if signature available, pass recovered user to function
         return this.portalService.getExplore(
             chainId,
             page,
             sort as SUPPORTED_PORTAL_SORT_TYPE,
-            "0x123"
+            signer
         );
     }
 
@@ -50,23 +52,29 @@ export class PortalController {
         required: false
     })
     @Get("/favorites/:chainId")
-    getFavorites(@Param("chainId") chainId: number, @Query("page") page: number) {
-        // signature required
-        return this.portalService.getFavorites(chainId, "0x123", page);
+    getFavorites(
+        @Param("chainId") chainId: number,
+        @Query("page") page: number,
+        @Signer(true) signer: Address
+    ) {
+        return this.portalService.getFavorites(chainId, signer, page);
     }
 
     @Get("/project/:chainId/:id")
-    getProjectById(@Param("chainId") chainId: number, @Param("id") id: number) {
-        // if signature available, pass recovered user to function
-        return this.portalService.getProjectById(chainId, id, "0x123");
+    async getProjectById(
+        @Param("chainId") chainId: number,
+        @Param("id") id: number,
+        @Signer(false) signer: Address
+    ) {
+        return this.portalService.getProjectById(chainId, id, signer);
     }
 
     @Post("/project/:chainId/:id/toggle-favorite")
     toggleFavorite(
         @Param("chainId") chainId: number,
-        @Param("id") id: number
+        @Param("id") id: number,
+        @Signer(true) signer: Address
     ): Promise<{ isFavoritedNow: boolean | null }> {
-        // signature required
-        return this.portalService.toggleFavorite(chainId, id, "0x123");
+        return this.portalService.toggleFavorite(chainId, id, signer);
     }
 }

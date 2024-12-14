@@ -1,8 +1,8 @@
 import { Injectable, NestMiddleware } from "@nestjs/common";
 import { Request, Response, NextFunction } from "express";
+import { Hash } from "viem";
 
 import { signatureCheck } from "src/helpers/signature-check";
-import { Hash } from "viem";
 
 @Injectable()
 export default class SignatureCheckMiddleware implements NestMiddleware {
@@ -10,7 +10,9 @@ export default class SignatureCheckMiddleware implements NestMiddleware {
         const message = req.get("X-ACCESSTIME-AUTH-MESSAGE");
         const signature = req.get("X-ACCESSTIME-AUTH-SIGNATURE");
 
-        await signatureCheck(message as Hash, signature as Hash, true);
+        const verifyResult = await signatureCheck(message as Hash, signature as Hash, true);
+
+        (req as any).locals.signer = verifyResult[1].toLowerCase();
 
         next();
     }
