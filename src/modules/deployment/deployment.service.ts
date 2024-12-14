@@ -66,7 +66,7 @@ export class DeploymentService {
         const deploymentCount = Number(
             (await this.subgraphService.countDeployments(chainId, address)).deploymentCount
         );
-        const limit = Number(process.env.LIST_DEPLOYMENTS_LIMIT);
+        const limit = Number(process.env.PAGE_ITEM_LIMIT);
         const requestable =
             limit - ((requestedPage + 1) * limit - deploymentCount) > 0 ? true : false;
 
@@ -117,7 +117,7 @@ export class DeploymentService {
         const deploymentCount = Number(
             (await this.subgraphService.countDeployments(chainId, address)).deploymentCount
         );
-        const limit = Number(process.env.LIST_DEPLOYMENTS_LIMIT);
+        const limit = Number(process.env.PAGE_ITEM_LIMIT);
         const maxPage = Math.floor(deploymentCount / limit);
 
         for (let i = 0; i < maxPage + 1; i++) {

@@ -1,18 +1,28 @@
 import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
+import { InjectModel } from "@nestjs/mongoose";
+import { Model } from "mongoose";
 
+import { Address } from "src/helpers";
 import {
     DEFAULT_SORT_TYPE,
     SUPPORTED_PORTAL_SORT_TYPE,
     SUPPORTED_PORTAL_SORT_TYPES
 } from "src/common";
 
-import { SubgraphService } from "../subgraph/subgraph.service";
-
+import { Project } from "./schemas/project.schema";
+import { ProjectFavorite } from "./schemas/project-favorite.schema";
 import { ExploreResponseDto, ProjectCardDto } from "./dto";
+
+import { SubgraphService } from "../subgraph/subgraph.service";
 
 @Injectable()
 export class PortalService {
-    constructor(private readonly subgraphService: SubgraphService) {}
+    constructor(
+        @InjectModel(Project.name) private readonly projectModel: Model<Project>,
+        @InjectModel(ProjectFavorite.name)
+        private readonly projectFavoriteModel: Model<ProjectFavorite>,
+        private readonly subgraphService: SubgraphService
+    ) {}
 
     async getExplore(
         chainId: number,
@@ -20,7 +30,7 @@ export class PortalService {
         sort?: SUPPORTED_PORTAL_SORT_TYPE
     ): Promise<ExploreResponseDto> {
         const queryPage = page ?? 0;
-        const limit = Number(process.env.LIST_DEPLOYMENTS_LIMIT); // to-do
+        const limit = Number(process.env.PAGE_ITEM_LIMIT);
         let querySort: SUPPORTED_PORTAL_SORT_TYPE = DEFAULT_SORT_TYPE;
         let countProjects: number = 0;
 
@@ -113,5 +123,38 @@ export class PortalService {
         }
 
         return { countProjects, maxPage: Math.floor(countProjects / limit), projects };
+    }
+
+    async toggleFavorite(chainId: number, id: number, user: Address) {
+        const userFavorite = await this.projectFavoriteModel.countDocuments({
+            id,
+            chainId,
+            user
+        });
+
+        let isFavorited: boolean | null = null;
+        if (userFavorite == 0) {
+            const newUserFavorite = new this.projectFavoriteModel({
+                id,
+                chainId,
+                user
+            });
+
+            await newUserFavorite.save();
+
+            isFavorited = true;
+        } else {
+            const deleteUserFavorite = await this.projectFavoriteModel.findOne({
+                id,
+                chainId,
+                user
+            });
+
+            await deleteUserFavorite.deleteOne();
+
+            isFavorited = false;
+        }
+
+        return { isFavorited };
     }
 }

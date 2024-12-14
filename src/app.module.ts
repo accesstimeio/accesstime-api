@@ -11,6 +11,7 @@ import { ScheduleModule } from "@nestjs/schedule";
 import { CronModule } from "./modules/cron/cron.module";
 import { PortalModule } from "./modules/portal/portal.module";
 import { PortalCreatorModule } from "./modules/portal-creator/portal-creator.module";
+import { MongooseModule } from "@nestjs/mongoose";
 
 const NODE_ENV = process.env.NODE_ENV;
 
@@ -22,17 +23,23 @@ const NODE_ENV = process.env.NODE_ENV;
             validationSchema: Joi.object({
                 LAST_DEPLOYMENTS_LIMIT: Joi.number().default(5),
                 LAST_DEPLOYMENTS_TTL: Joi.number().default(86400), // 1 day as seconds
-                LIST_DEPLOYMENTS_LIMIT: Joi.number().default(15),
                 LIST_DEPLOYMENTS_TTL: Joi.number().default(86400), // 1 day as seconds
+                PAGE_ITEM_LIMIT: Joi.number().default(16),
                 PROJECT_TTL: Joi.number().default(172800), // 2 day as seconds
                 RATES_TTL: Joi.number().default(86400), // 1 day as seconds
                 REDIS_HOST: Joi.string().required(),
                 REDIS_PORT: Joi.number().required(),
                 REDIS_PASSWORD: Joi.string().required(),
-                SUBGRAPH_URL: Joi.string().required()
+                SUBGRAPH_URL: Joi.string().required(),
+                MONGO_URI: Joi.string().required()
             })
         }),
         ScheduleModule.forRoot(),
+        MongooseModule.forRootAsync({
+            useFactory: () => ({
+                uri: process.env.MONGO_URI
+            })
+        }),
         SubgraphModule,
         DeploymentModule,
         ProjectModule,

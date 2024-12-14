@@ -5,9 +5,18 @@ import ChainIdCheckMiddleware from "src/common/middlewares/chain-id-check.middle
 import { SubgraphModule } from "../subgraph/subgraph.module";
 import { PortalController } from "./portal.controller";
 import { PortalService } from "./portal.service";
+import { MongooseModule } from "@nestjs/mongoose";
+import { Project, ProjectSchema } from "./schemas/project.schema";
+import { ProjectFavorite, ProjectFavoriteSchema } from "./schemas/project-favorite.schema";
 
 @Module({
-    imports: [SubgraphModule],
+    imports: [
+        MongooseModule.forFeatureAsync([
+            { name: Project.name, useFactory: () => ProjectSchema },
+            { name: ProjectFavorite.name, useFactory: () => ProjectFavoriteSchema }
+        ]),
+        SubgraphModule
+    ],
     controllers: [PortalController],
     providers: [PortalService]
 })

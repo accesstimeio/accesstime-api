@@ -51,4 +51,12 @@ export class ProjectDto extends ProjectCardDto {
         isArray: true
     })
     categories: number[];
+
+    @Expose()
+    @ApiProperty()
+    contentUrl: string | null;
+
+    @Expose()
+    @ApiProperty()
+    paymentMethods: Address[];
 }

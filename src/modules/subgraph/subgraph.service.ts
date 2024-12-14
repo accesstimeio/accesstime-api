@@ -126,7 +126,7 @@ export class SubgraphService {
 
     async listDeployments(chainId: number, address: Address, page?: number) {
         try {
-            const limit = Number(process.env.LIST_DEPLOYMENTS_LIMIT);
+            const limit = Number(process.env.PAGE_ITEM_LIMIT);
             const skip = page ? page * limit : 0;
             const result = await this.getClient(chainId).request(ListDeploymentsDocument, {
                 owner: address,
@@ -195,7 +195,7 @@ export class SubgraphService {
 
     async newestProjects(chainId: number, page?: number): Promise<NewestProjectsResponse[]> {
         try {
-            const limit = Number(process.env.LIST_DEPLOYMENTS_LIMIT); // to-do
+            const limit = Number(process.env.PAGE_ITEM_LIMIT);
             const skip = page ? page * limit : 0;
             const result = await this.getClient(chainId).request(NewestProjectsDocument, {
                 limit,
@@ -211,7 +211,7 @@ export class SubgraphService {
 
     async topRatedProjects(chainId: number, page?: number): Promise<TopRatedProjectsResponse[]> {
         try {
-            const limit = Number(process.env.LIST_DEPLOYMENTS_LIMIT); // to-do
+            const limit = Number(process.env.PAGE_ITEM_LIMIT);
             const skip = page ? page * limit : 0;
             const result = await this.getClient(chainId).request(TopRatedProjectsDocument, {
                 limit,
@@ -230,7 +230,7 @@ export class SubgraphService {
         page?: number
     ): Promise<WeeklyPopularProjectsResponse[]> {
         try {
-            const limit = Number(process.env.LIST_DEPLOYMENTS_LIMIT); // to-do
+            const limit = Number(process.env.PAGE_ITEM_LIMIT);
             const skip = page ? page * limit : 0;
             const result = await this.getClient(chainId).request(WeeklyPopularProjectsDocument, {
                 limit,
