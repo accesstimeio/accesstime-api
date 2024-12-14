@@ -1,10 +1,13 @@
 import { MiddlewareConsumer, Module, NestModule, forwardRef } from "@nestjs/common";
-import { DeploymentController } from "./deployment.controller";
-import { DeploymentService } from "./deployment.service";
-import { SubgraphModule } from "../subgraph/subgraph.module";
 import { CacheModule } from "@nestjs/cache-manager";
 import * as redisStore from "cache-manager-redis-store";
+
 import ChainIdCheckMiddleware from "src/common/middlewares/chain-id-check.middleware";
+
+import { DeploymentController } from "./deployment.controller";
+import { DeploymentService } from "./deployment.service";
+
+import { SubgraphModule } from "../subgraph/subgraph.module";
 
 @Module({
     imports: [

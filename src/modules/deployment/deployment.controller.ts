@@ -1,8 +1,9 @@
 import { Controller, Get, Param, Query, UsePipes, ValidationPipe } from "@nestjs/common";
-import { DeploymentService } from "./deployment.service";
 import { ApiQuery, ApiResponse } from "@nestjs/swagger";
-import { Address } from "src/helpers";
+import { Address } from "viem";
+
 import { LastDeploymentResponseDto, ListDeploymentResponseDto, RatesDto } from "./dto";
+import { DeploymentService } from "./deployment.service";
 
 @UsePipes(new ValidationPipe({ transform: true }))
 @Controller("deployment")

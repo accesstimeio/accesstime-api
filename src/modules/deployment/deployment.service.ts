@@ -1,8 +1,10 @@
 import { HttpException, HttpStatus, Inject, Injectable, forwardRef } from "@nestjs/common";
-import { Address, isAddress } from "src/helpers";
-import { SubgraphService } from "../subgraph/subgraph.service";
-import { LastDeploymentResponseDto, ListDeploymentResponseDto, RatesDto } from "./dto";
 import { CACHE_MANAGER, Cache } from "@nestjs/cache-manager";
+import { Address, isAddress } from "viem";
+
+import { LastDeploymentResponseDto, ListDeploymentResponseDto, RatesDto } from "./dto";
+
+import { SubgraphService } from "../subgraph/subgraph.service";
 
 @Injectable()
 export class DeploymentService {

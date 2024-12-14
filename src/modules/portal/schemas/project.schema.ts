@@ -1,7 +1,6 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument, Types } from "mongoose";
-
-import { Address } from "src/helpers";
+import { Address } from "viem";
 
 import { ProjectSocial, ProjectSocialSchema } from "./project-social.schema";
 import { ProjectPackage, ProjectPackageSchema } from "./project-package.schema";

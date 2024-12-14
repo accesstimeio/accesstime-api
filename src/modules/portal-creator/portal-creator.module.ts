@@ -1,7 +1,9 @@
 import { MiddlewareConsumer, Module, NestModule } from "@nestjs/common";
+
+import ChainIdCheckMiddleware from "src/common/middlewares/chain-id-check.middleware";
+
 import { PortalCreatorController } from "./portal-creator.controller";
 import { PortalCreatorService } from "./portal-creator.service";
-import ChainIdCheckMiddleware from "src/common/middlewares/chain-id-check.middleware";
 
 @Module({
     imports: [],

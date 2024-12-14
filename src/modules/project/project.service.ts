@@ -1,8 +1,10 @@
 import { HttpException, HttpStatus, Inject, Injectable, forwardRef } from "@nestjs/common";
-import { SubgraphService } from "../subgraph/subgraph.service";
 import { CACHE_MANAGER, Cache } from "@nestjs/cache-manager";
+import { Address } from "viem";
+
 import { ProjectResponseDto } from "./dto";
-import { Address } from "src/helpers";
+
+import { SubgraphService } from "../subgraph/subgraph.service";
 
 @Injectable()
 export class ProjectService {

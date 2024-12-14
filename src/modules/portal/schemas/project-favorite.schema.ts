@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument } from "mongoose";
-import { Address } from "src/helpers";
+import { Address } from "viem";
 
 export type ProjectFavoriteDocument = HydratedDocument<ProjectFavorite>;
 

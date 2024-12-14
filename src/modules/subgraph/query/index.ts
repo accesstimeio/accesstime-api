@@ -1,5 +1,5 @@
 import { gql } from "graphql-request";
-import { Address } from "src/helpers";
+import { Address } from "viem";
 
 export type CountDeploymentsResponse = {
     deploymentCount: string;

@@ -1,14 +1,10 @@
 import { Inject, Injectable, forwardRef } from "@nestjs/common";
 import { CACHE_MANAGER, Cache } from "@nestjs/cache-manager";
 import { GraphQLClient } from "graphql-request";
+import { Address } from "viem";
 
 import { SUPPORTED_CHAIN_IDS } from "src/common";
-import { Address } from "src/helpers";
 
-import { DeploymentService } from "../deployment/deployment.service";
-import { DeploymentDto, RatesDto } from "../deployment/dto";
-import { ProjectResponseDto } from "../project/dto";
-import { ProjectService } from "../project/project.service";
 import {
     SyncResponse,
     CountDeploymentsResponse,
@@ -28,6 +24,11 @@ import {
     ProjectWeeklyVoteDocument,
     ProjectWeeklyVoteResponse
 } from "./query";
+
+import { DeploymentService } from "../deployment/deployment.service";
+import { DeploymentDto, RatesDto } from "../deployment/dto";
+import { ProjectResponseDto } from "../project/dto";
+import { ProjectService } from "../project/project.service";
 
 @Injectable()
 export class SubgraphService {

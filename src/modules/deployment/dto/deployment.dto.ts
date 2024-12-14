@@ -1,6 +1,6 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Expose } from "class-transformer";
-import { Address } from "src/helpers";
+import { Address } from "viem";
 
 export class DeploymentDto {
     @Expose()

@@ -1,8 +1,7 @@
 import { ApiProperty, OmitType } from "@nestjs/swagger";
 import { Expose, Type } from "class-transformer";
 import { ValidateNested } from "class-validator";
-
-import { Address } from "src/helpers";
+import { Address } from "viem";
 
 export class ProjectSocialDto {
     @Expose()

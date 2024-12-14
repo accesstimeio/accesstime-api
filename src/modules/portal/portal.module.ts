@@ -1,13 +1,14 @@
 import { MiddlewareConsumer, Module, NestModule } from "@nestjs/common";
+import { MongooseModule } from "@nestjs/mongoose";
 
 import ChainIdCheckMiddleware from "src/common/middlewares/chain-id-check.middleware";
 
-import { SubgraphModule } from "../subgraph/subgraph.module";
 import { PortalController } from "./portal.controller";
 import { PortalService } from "./portal.service";
-import { MongooseModule } from "@nestjs/mongoose";
 import { Project, ProjectSchema } from "./schemas/project.schema";
 import { ProjectFavorite, ProjectFavoriteSchema } from "./schemas/project-favorite.schema";
+
+import { SubgraphModule } from "../subgraph/subgraph.module";
 
 @Module({
     imports: [

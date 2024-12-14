@@ -1,6 +1,8 @@
 import { Module } from "@nestjs/common";
-import { SubgraphModule } from "../subgraph/subgraph.module";
+
 import { CronService } from "./cron.service";
+
+import { SubgraphModule } from "../subgraph/subgraph.module";
 
 @Module({
     imports: [SubgraphModule],

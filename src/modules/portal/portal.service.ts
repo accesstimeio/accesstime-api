@@ -1,8 +1,9 @@
 import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Document, Model } from "mongoose";
+import { Address } from "viem";
 
-import { Address, getEpochWeek } from "src/helpers";
+import { getEpochWeek } from "src/helpers";
 import {
     DEFAULT_SORT_TYPE,
     SUPPORTED_PORTAL_SORT_TYPE,
@@ -11,10 +12,9 @@ import {
 
 import { Project } from "./schemas/project.schema";
 import { ProjectFavorite } from "./schemas/project-favorite.schema";
-import { ExploreResponseDto, ProjectCardDto, ProjectDto } from "./dto";
+import { ExploreResponseDto, ProjectCardDto, ProjectDto, UserFavoritesResponseDto } from "./dto";
 
 import { SubgraphService } from "../subgraph/subgraph.service";
-import { UserFavoritesResponseDto } from "./dto/user-favorites.dto";
 
 @Injectable()
 export class PortalService {
