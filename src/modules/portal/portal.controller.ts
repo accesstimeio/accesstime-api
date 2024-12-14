@@ -35,7 +35,13 @@ export class PortalController {
         @Query("page") page: number,
         @Query("sort") sort: string
     ) {
-        return this.portalService.getExplore(chainId, page, sort as SUPPORTED_PORTAL_SORT_TYPE);
+        // if signature available, pass recovered user to function
+        return this.portalService.getExplore(
+            chainId,
+            page,
+            sort as SUPPORTED_PORTAL_SORT_TYPE,
+            "0x123"
+        );
     }
 
     @ApiQuery({
@@ -51,21 +57,15 @@ export class PortalController {
 
     @Get("/project/:chainId/:id")
     getProjectById(@Param("chainId") chainId: number, @Param("id") id: number) {
-        // project-avatar
-        // project-socials
-        // project-categories
-        // project-content
-        // project-payment-methods
-        // project-packages, if available
-        // project-votes
-        return [chainId, id];
+        // if signature available, pass recovered user to function
+        return this.portalService.getProjectById(chainId, id, "0x123");
     }
 
     @Post("/project/:chainId/:id/toggle-favorite")
     toggleFavorite(
         @Param("chainId") chainId: number,
         @Param("id") id: number
-    ): Promise<{ isFavorited: boolean | null }> {
+    ): Promise<{ isFavoritedNow: boolean | null }> {
         // signature required
         return this.portalService.toggleFavorite(chainId, id, "0x123");
     }

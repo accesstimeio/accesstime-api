@@ -24,7 +24,9 @@ import {
     TopRatedProjectsResponse,
     TopRatedProjectsDocument,
     WeeklyPopularProjectsResponse,
-    WeeklyPopularProjectsDocument
+    WeeklyPopularProjectsDocument,
+    ProjectWeeklyVoteDocument,
+    ProjectWeeklyVoteResponse
 } from "./query";
 
 @Injectable()
@@ -227,12 +229,14 @@ export class SubgraphService {
 
     async weeklyPopularProjects(
         chainId: number,
+        epochWeek: number,
         page?: number
     ): Promise<WeeklyPopularProjectsResponse[]> {
         try {
             const limit = Number(process.env.PAGE_ITEM_LIMIT);
             const skip = page ? page * limit : 0;
             const result = await this.getClient(chainId).request(WeeklyPopularProjectsDocument, {
+                epochWeek,
                 limit,
                 skip
             });
@@ -241,6 +245,24 @@ export class SubgraphService {
             return accessVotes == null ? [] : accessVotes;
         } catch (_err) {
             throw new Error("[weeklyPopularProjects]: Subgraph query failed!");
+        }
+    }
+
+    async projectWeeklyVote(
+        chainId: number,
+        epochWeek: number,
+        accessTime: Address
+    ): Promise<ProjectWeeklyVoteResponse[]> {
+        try {
+            const result = await this.getClient(chainId).request(ProjectWeeklyVoteDocument, {
+                epochWeek,
+                accessTime
+            });
+            const { accessVotes } = result as { accessVotes: ProjectWeeklyVoteResponse[] };
+
+            return accessVotes == null ? [] : accessVotes;
+        } catch (_err) {
+            throw new Error("[projectWeeklyVote]: Subgraph query failed!");
         }
     }
 }

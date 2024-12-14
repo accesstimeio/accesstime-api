@@ -1,8 +1,8 @@
 import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import { Model } from "mongoose";
+import { Document, Model } from "mongoose";
 
-import { Address } from "src/helpers";
+import { Address, getEpochWeek } from "src/helpers";
 import {
     DEFAULT_SORT_TYPE,
     SUPPORTED_PORTAL_SORT_TYPE,
@@ -11,7 +11,7 @@ import {
 
 import { Project } from "./schemas/project.schema";
 import { ProjectFavorite } from "./schemas/project-favorite.schema";
-import { ExploreResponseDto, ProjectCardDto } from "./dto";
+import { ExploreResponseDto, ProjectCardDto, ProjectDto } from "./dto";
 
 import { SubgraphService } from "../subgraph/subgraph.service";
 
@@ -27,7 +27,8 @@ export class PortalService {
     async getExplore(
         chainId: number,
         page?: number,
-        sort?: SUPPORTED_PORTAL_SORT_TYPE
+        sort?: SUPPORTED_PORTAL_SORT_TYPE,
+        user?: Address
     ): Promise<ExploreResponseDto> {
         const queryPage = page ?? 0;
         const limit = Number(process.env.PAGE_ITEM_LIMIT);
@@ -47,7 +48,7 @@ export class PortalService {
             }
         }
 
-        const projects: ProjectCardDto[] = [];
+        let projects: ProjectCardDto[] = [];
 
         if (querySort != "weekly_popular") {
             countProjects = await this.subgraphService.countProjects(chainId);
@@ -72,8 +73,6 @@ export class PortalService {
                     queryPage
                 );
 
-                // const newestProjectsIds = newestProjects.map((project) => project.id);
-
                 newestProjects.forEach(({ id, totalVotePoint, totalVoteParticipantCount }) => {
                     projects.push({
                         id,
@@ -90,8 +89,6 @@ export class PortalService {
                     queryPage
                 );
 
-                // const topRatedProjectsIds = topRatedProjects.map((project) => project.id);
-
                 topRatedProjects.forEach(({ id, totalVotePoint, totalVoteParticipantCount }) => {
                     projects.push({
                         id,
@@ -105,10 +102,9 @@ export class PortalService {
             default:
                 const weeklyPopularProjects = await this.subgraphService.weeklyPopularProjects(
                     chainId,
+                    getEpochWeek(),
                     queryPage
                 );
-
-                // const weeklyPopularProjectsIds = weeklyPopularProjects.map((project) => project.accessTime);
 
                 weeklyPopularProjects.forEach(({ accessTime, totalPoint, participantCount }) => {
                     projects.push({
@@ -122,18 +118,110 @@ export class PortalService {
                 break;
         }
 
+        const projectIds = projects.map((project) => project.id);
+
+        const projectDocuments = await this.projectModel
+            .find({ chainId })
+            .where("id")
+            .in(projectIds)
+            .select(["id", "avatar"])
+            .exec();
+
+        let userFavorites: ProjectFavorite[] = [];
+
+        if (user) {
+            userFavorites = await this.projectFavoriteModel
+                .find({ chainId, user })
+                .where("id")
+                .in(projectIds)
+                .select("id")
+                .exec();
+        }
+
+        projects = projects.map((project) => ({
+            ...project,
+            avatar: projectDocuments.find((pd) => pd.id == project.id)?.avatar ?? null,
+            isFavorited: userFavorites.find((uf) => uf.id == uf.id) ? true : false
+        }));
+
         return { countProjects, maxPage: Math.floor(countProjects / limit), projects };
     }
 
-    async toggleFavorite(chainId: number, id: number, user: Address) {
-        const userFavorite = await this.projectFavoriteModel.countDocuments({
-            id,
-            chainId,
-            user
-        });
+    async getProjectById(chainId: number, id: number, user?: Address): Promise<ProjectDto> {
+        const projectFromChain = await this.subgraphService.projectById(chainId, id);
 
-        let isFavorited: boolean | null = null;
-        if (userFavorite == 0) {
+        if (projectFromChain.length == 0) {
+            throw new HttpException(
+                {
+                    errors: { message: "Requested project is not found." }
+                },
+                HttpStatus.EXPECTATION_FAILED
+            );
+        }
+
+        const projectLastUpdate = Number(projectFromChain[0].updateTimestamp);
+        const projectAddress = projectFromChain[0].id;
+        const projectPaymentMethods = projectFromChain[0].paymentMethods;
+        const projectDocument = await this.projectModel.countDocuments({ id, chainId });
+
+        let project: (Document<unknown, unknown, Project> & Project) | null = null;
+        let requiredSave: boolean = false;
+        if (!projectDocument) {
+            project = new this.projectModel({
+                id,
+                chainId,
+                chainUpdateTimestamp: 0
+            });
+
+            requiredSave = true;
+        } else {
+            project = (await this.projectModel.findOne({ id, chainId })) ?? null;
+        }
+
+        if (project.chainUpdateTimestamp < projectLastUpdate) {
+            project.$set({
+                chainUpdateTimestamp: projectLastUpdate,
+                paymentMethods: projectPaymentMethods
+            });
+
+            requiredSave = true;
+        }
+
+        if (requiredSave && project != null) {
+            await project.save();
+        }
+
+        let isFavorited: boolean = false;
+        if (user) {
+            isFavorited = await this.isProjectFavoritedByUser(chainId, id, user);
+        }
+
+        const projectWeeklyVote = await this.subgraphService.projectWeeklyVote(
+            chainId,
+            getEpochWeek(),
+            projectAddress
+        );
+
+        const { avatar, socials, categories, contentUrl, paymentMethods } = project;
+
+        return {
+            avatar,
+            votePoint: projectWeeklyVote.length > 0 ? Number(projectWeeklyVote[0].totalPoint) : 0,
+            voteParticipantCount:
+                projectWeeklyVote.length > 0 ? Number(projectWeeklyVote[0].participantCount) : 0,
+            isFavorited,
+            socials,
+            categories,
+            contentUrl,
+            paymentMethods
+        };
+    }
+
+    async toggleFavorite(chainId: number, id: number, user: Address) {
+        const isFavorited = await this.isProjectFavoritedByUser(chainId, id, user);
+
+        let isFavoritedNow: boolean | null = null;
+        if (!isFavorited) {
             const newUserFavorite = new this.projectFavoriteModel({
                 id,
                 chainId,
@@ -142,19 +230,35 @@ export class PortalService {
 
             await newUserFavorite.save();
 
-            isFavorited = true;
+            isFavoritedNow = true;
         } else {
-            const deleteUserFavorite = await this.projectFavoriteModel.findOne({
-                id,
-                chainId,
-                user
-            });
+            const deleteUserFavorite = await this.projectFavoriteModel
+                .findOne({
+                    id,
+                    chainId,
+                    user
+                })
+                .exec();
 
             await deleteUserFavorite.deleteOne();
 
-            isFavorited = false;
+            isFavoritedNow = false;
         }
 
-        return { isFavorited };
+        return { isFavoritedNow };
+    }
+
+    private async isProjectFavoritedByUser(
+        chainId: number,
+        id: number,
+        user: Address
+    ): Promise<boolean> {
+        const userFavorite = await this.projectFavoriteModel.countDocuments({
+            id,
+            chainId,
+            user
+        });
+
+        return userFavorite > 0 ? true : false;
     }
 }

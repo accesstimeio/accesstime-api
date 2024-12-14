@@ -57,6 +57,7 @@ export const ProjectByIdDocument = gql`
             paused
             paymentMethods
             prevOwner
+            updateTimestamp
         }
     }
 `;
@@ -148,6 +149,20 @@ export const WeeklyPopularProjectsDocument = gql`
             where: { epochWeek: $epochWeek }
         ) {
             accessTime
+            participantCount
+            totalPoint
+        }
+    }
+`;
+
+export type ProjectWeeklyVoteResponse = {
+    participantCount: string;
+    totalPoint: string;
+};
+
+export const ProjectWeeklyVoteDocument = gql`
+    query ProjectWeeklyVote($epochWeek: BigInt!, $accessTime: Bytes!) {
+        accessVotes(where: { epochWeek: $epochWeek, accessTime: $accessTime }) {
             participantCount
             totalPoint
         }

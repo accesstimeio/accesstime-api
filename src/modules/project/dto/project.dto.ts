@@ -34,4 +34,8 @@ export class ProjectResponseDto {
     @Expose()
     @ApiProperty()
     prevOwner: Address;
+
+    @Expose()
+    @ApiProperty()
+    updateTimestamp: string;
 }
