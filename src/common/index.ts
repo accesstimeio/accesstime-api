@@ -26,3 +26,5 @@ export const SIGNATURE_AUTH_TYPES: TypedData = {
         { name: "apiVersion", type: "string" }
     ]
 };
+
+export const SUPPORTED_CATEGORIES = []; // to-do

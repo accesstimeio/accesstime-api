@@ -21,6 +21,8 @@ export const Signer = createParamDecorator((data: boolean, ctx: ExecutionContext
                     return undefined;
                 }
             });
+        } else {
+            return undefined;
         }
     } else {
         return signer;
