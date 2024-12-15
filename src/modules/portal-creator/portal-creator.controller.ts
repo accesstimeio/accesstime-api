@@ -4,7 +4,11 @@ import { Address } from "viem";
 import { Signer } from "src/signer.decorator";
 
 import { PortalCreatorService } from "./portal-creator.service";
-import { UpdateProjectCategoriesDto } from "./dto";
+import {
+    UpdateProjectCategoriesDto,
+    UpdateProjectPackagesDto,
+    UpdateProjectSocialsDto
+} from "./dto";
 
 @UsePipes(new ValidationPipe({ transform: true }))
 @Controller()
@@ -24,9 +28,10 @@ export class PortalCreatorController {
     updateProjectSocials(
         @Param("chainId") chainId: number,
         @Param("id") id: number,
-        @Signer(true) signer: Address
+        @Signer(true) signer: Address,
+        @Body() data: UpdateProjectSocialsDto
     ) {
-        return this.portalCreatorService.updateProjectSocials(chainId, id, signer, "to-do");
+        return this.portalCreatorService.updateProjectSocials(chainId, id, signer, data);
     }
 
     @Post("/update-project-categories/:chainId/:id")
@@ -52,9 +57,26 @@ export class PortalCreatorController {
     updateProjectPackages(
         @Param("chainId") chainId: number,
         @Param("id") id: number,
+        @Signer(true) signer: Address,
+        @Body() data: UpdateProjectPackagesDto
+    ) {
+        return this.portalCreatorService.updateProjectPackages(chainId, id, signer, data);
+    }
+
+    @Post("/update-project-package-image/:chainId/:id/:packageId")
+    updateProjectPackageImage(
+        @Param("chainId") chainId: number,
+        @Param("id") id: number,
+        @Param("packageId") packageId: number,
         @Signer(true) signer: Address
     ) {
-        return this.portalCreatorService.updateProjectPackages(chainId, id, signer, "to-do");
+        return this.portalCreatorService.updateProjectPackageImage(
+            chainId,
+            id,
+            packageId,
+            signer,
+            "to-do"
+        );
     }
 
     @Post("/update-project-package-content/:chainId/:id/:packageId")

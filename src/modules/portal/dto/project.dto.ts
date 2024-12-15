@@ -13,6 +13,24 @@ export class ProjectSocialDto {
     url: string;
 }
 
+export class ProjectPackageDto {
+    @Expose()
+    @ApiProperty()
+    id: number;
+
+    @Expose()
+    @ApiProperty()
+    title: string;
+
+    @Expose()
+    @ApiProperty()
+    backgroundUrl: string;
+
+    @Expose()
+    @ApiProperty()
+    contentUrl: string;
+}
+
 export class ProjectCardDto {
     @Expose()
     @ApiProperty()
@@ -58,4 +76,13 @@ export class ProjectDto extends OmitType(ProjectCardDto, ["id"]) {
     @Expose()
     @ApiProperty()
     paymentMethods: Address[];
+
+    @Expose()
+    @ApiProperty({
+        type: ProjectPackageDto,
+        isArray: true
+    })
+    @ValidateNested({ each: true })
+    @Type(() => ProjectPackageDto)
+    packages: ProjectPackageDto[];
 }

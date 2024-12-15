@@ -6,7 +6,7 @@ export type ProjectPackageDocument = HydratedDocument<ProjectPackage>;
 @Schema({ timestamps: true })
 export class ProjectPackage {
     @Prop({ required: true })
-    packageId: number;
+    id: number;
 
     @Prop({ required: true })
     title: string;

@@ -261,7 +261,7 @@ export class PortalService {
             projectAddress
         );
 
-        const { avatar, socials, categories, contentUrl, paymentMethods } = project;
+        const { avatar, socials, categories, contentUrl, paymentMethods, packages } = project;
 
         return {
             avatar,
@@ -272,7 +272,8 @@ export class PortalService {
             socials,
             categories,
             contentUrl,
-            paymentMethods
+            paymentMethods,
+            packages
         };
     }
 

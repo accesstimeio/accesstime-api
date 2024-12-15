@@ -3,6 +3,6 @@ import { Expose } from "class-transformer";
 
 export class UpdateProjectCategoriesDto {
     @Expose()
-    @ApiProperty()
+    @ApiProperty({ required: true, isArray: true })
     payload: number[];
 }

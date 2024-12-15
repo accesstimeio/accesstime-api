@@ -28,3 +28,5 @@ export const SIGNATURE_AUTH_TYPES: TypedData = {
 };
 
 export const SUPPORTED_CATEGORIES = []; // to-do
+
+export const SUPPORTED_SOCIAL_TYPES = []; // to-do
