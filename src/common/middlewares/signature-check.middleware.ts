@@ -12,7 +12,7 @@ export default class SignatureCheckMiddleware implements NestMiddleware {
 
         const verifyResult = await signatureCheck(message as Hash, signature as Hash, true);
 
-        (req as any).locals.signer = verifyResult[1].toLowerCase();
+        (req as any).signer = verifyResult[1].toLowerCase();
 
         next();
     }

@@ -5,7 +5,7 @@ import { signatureCheck } from "./helpers/signature-check";
 
 export const Signer = createParamDecorator((data: boolean, ctx: ExecutionContext) => {
     const request = ctx.switchToHttp().getRequest();
-    let signer: Address | undefined = request.locals.signer as Address;
+    let signer: Address | undefined = request.signer as Address;
 
     if (data == false) {
         const message = request.get("X-ACCESSTIME-AUTH-MESSAGE");
