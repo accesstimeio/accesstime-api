@@ -1,5 +1,18 @@
-import { Body, Controller, Param, Post, UsePipes, ValidationPipe } from "@nestjs/common";
+import {
+    Body,
+    Controller,
+    MaxFileSizeValidator,
+    Param,
+    ParseFilePipe,
+    Post,
+    UploadedFile,
+    UseInterceptors,
+    UsePipes,
+    ValidationPipe
+} from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
 import { Address } from "viem";
+import { Express } from "express";
 
 import { Signer } from "src/signer.decorator";
 
@@ -16,12 +29,19 @@ export class PortalCreatorController {
     constructor(private readonly portalCreatorService: PortalCreatorService) {}
 
     @Post("/update-project-avatar/:chainId/:id")
+    @UseInterceptors(FileInterceptor("file"))
     updateProjectAvatar(
         @Param("chainId") chainId: number,
         @Param("id") id: number,
-        @Signer(true) signer: Address
+        @Signer(true) signer: Address,
+        @UploadedFile(
+            new ParseFilePipe({
+                validators: [new MaxFileSizeValidator({ maxSize: 1024 * 300 })] // to-do
+            })
+        )
+        file: Express.Multer.File
     ) {
-        return this.portalCreatorService.updateProjectAvatar(chainId, id, signer, "to-do");
+        return this.portalCreatorService.updateProjectAvatar(chainId, id, signer, file);
     }
 
     @Post("/update-project-socials/:chainId/:id")
@@ -48,9 +68,15 @@ export class PortalCreatorController {
     updateProjectContent(
         @Param("chainId") chainId: number,
         @Param("id") id: number,
-        @Signer(true) signer: Address
+        @Signer(true) signer: Address,
+        @UploadedFile(
+            new ParseFilePipe({
+                validators: [new MaxFileSizeValidator({ maxSize: 1024 })] // to-do
+            })
+        )
+        file: Express.Multer.File
     ) {
-        return this.portalCreatorService.updateProjectContent(chainId, id, signer, "to-do");
+        return this.portalCreatorService.updateProjectContent(chainId, id, signer, file);
     }
 
     @Post("/update-project-packages/:chainId/:id")
@@ -68,14 +94,20 @@ export class PortalCreatorController {
         @Param("chainId") chainId: number,
         @Param("id") id: number,
         @Param("packageId") packageId: number,
-        @Signer(true) signer: Address
+        @Signer(true) signer: Address,
+        @UploadedFile(
+            new ParseFilePipe({
+                validators: [new MaxFileSizeValidator({ maxSize: 1024 })] // to-do
+            })
+        )
+        file: Express.Multer.File
     ) {
         return this.portalCreatorService.updateProjectPackageImage(
             chainId,
             id,
             packageId,
             signer,
-            "to-do"
+            file
         );
     }
 
@@ -84,14 +116,20 @@ export class PortalCreatorController {
         @Param("chainId") chainId: number,
         @Param("id") id: number,
         @Param("packageId") packageId: number,
-        @Signer(true) signer: Address
+        @Signer(true) signer: Address,
+        @UploadedFile(
+            new ParseFilePipe({
+                validators: [new MaxFileSizeValidator({ maxSize: 1024 })] // to-do
+            })
+        )
+        file: Express.Multer.File
     ) {
         return this.portalCreatorService.updateProjectPackageContent(
             chainId,
             id,
             packageId,
             signer,
-            "to-do"
+            file
         );
     }
 }

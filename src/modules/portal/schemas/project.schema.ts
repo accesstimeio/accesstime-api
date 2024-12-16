@@ -27,7 +27,7 @@ export class Project {
     address: Address;
 
     @Prop({ default: null })
-    avatar: string | null;
+    avatarUrl: string | null;
 
     @Prop({ default: [], type: [ProjectSocialSchema] })
     socials: ProjectSocial[];

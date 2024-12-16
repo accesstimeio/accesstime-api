@@ -77,7 +77,7 @@ export class PortalService {
                 newestProjects.forEach(({ id, totalVotePoint, totalVoteParticipantCount }) => {
                     projects.push({
                         id,
-                        avatar: null,
+                        avatarUrl: null,
                         votePoint: Number(totalVotePoint),
                         voteParticipantCount: Number(totalVoteParticipantCount),
                         isFavorited: false
@@ -93,7 +93,7 @@ export class PortalService {
                 topRatedProjects.forEach(({ id, totalVotePoint, totalVoteParticipantCount }) => {
                     projects.push({
                         id,
-                        avatar: null,
+                        avatarUrl: null,
                         votePoint: Number(totalVotePoint),
                         voteParticipantCount: Number(totalVoteParticipantCount),
                         isFavorited: false
@@ -110,7 +110,7 @@ export class PortalService {
                 weeklyPopularProjects.forEach(({ accessTime, totalPoint, participantCount }) => {
                     projects.push({
                         id: accessTime,
-                        avatar: null,
+                        avatarUrl: null,
                         votePoint: Number(totalPoint),
                         voteParticipantCount: Number(participantCount),
                         isFavorited: false
@@ -141,7 +141,7 @@ export class PortalService {
 
         projects = projects.map((project) => ({
             ...project,
-            avatar: projectDocuments.find((pd) => pd.id == project.id)?.avatar ?? null,
+            avatarUrl: projectDocuments.find((pd) => pd.id == project.id)?.avatarUrl ?? null,
             isFavorited: userFavorites.find((uf) => uf.id == uf.id) ? true : false
         }));
 
@@ -192,7 +192,7 @@ export class PortalService {
 
         const projects: ProjectCardDto[] = userFavoriteProjectDocuments.map((project) => ({
             id: project.address,
-            avatar: project.avatar,
+            avatarUrl: project.avatarUrl,
             votePoint: 0,
             voteParticipantCount: 0,
             isFavorited: true
@@ -261,10 +261,10 @@ export class PortalService {
             projectAddress
         );
 
-        const { avatar, socials, categories, contentUrl, paymentMethods, packages } = project;
+        const { avatarUrl, socials, categories, contentUrl, paymentMethods, packages } = project;
 
         return {
-            avatar,
+            avatarUrl,
             votePoint: projectWeeklyVote.length > 0 ? Number(projectWeeklyVote[0].totalPoint) : 0,
             voteParticipantCount:
                 projectWeeklyVote.length > 0 ? Number(projectWeeklyVote[0].participantCount) : 0,

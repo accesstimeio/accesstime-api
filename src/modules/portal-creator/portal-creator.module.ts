@@ -9,11 +9,13 @@ import { PortalCreatorService } from "./portal-creator.service";
 
 import { Project, ProjectSchema } from "../portal/schemas/project.schema";
 import { SubgraphModule } from "../subgraph/subgraph.module";
+import { MinioModule } from "../minio/minio.module";
 
 @Module({
     imports: [
         MongooseModule.forFeatureAsync([{ name: Project.name, useFactory: () => ProjectSchema }]),
-        SubgraphModule
+        SubgraphModule,
+        MinioModule
     ],
     controllers: [PortalCreatorController],
     providers: [PortalCreatorService]

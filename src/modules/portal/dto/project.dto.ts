@@ -38,7 +38,7 @@ export class ProjectCardDto {
 
     @Expose()
     @ApiProperty()
-    avatar: string | null;
+    avatarUrl: string | null;
 
     @Expose()
     @ApiProperty()

@@ -13,17 +13,37 @@ import {
 
 import { Project } from "../portal/schemas/project.schema";
 import { SubgraphService } from "../subgraph/subgraph.service";
+import { MinioService } from "../minio/minio.service";
 
 @Injectable()
 export class PortalCreatorService {
     constructor(
         @InjectModel(Project.name) private readonly projectModel: Model<Project>,
-        private readonly subgraphService: SubgraphService
+        private readonly subgraphService: SubgraphService,
+        private readonly minioService: MinioService
     ) {}
 
-    async updateProjectAvatar(chainId: number, id: number, signer: Address, data: any) {
-        // const { project } = await this.getProject(chainId, id, signer);
-        return [chainId, id, signer, data];
+    async updateProjectAvatar(
+        chainId: number,
+        id: number,
+        signer: Address,
+        file: Express.Multer.File
+    ) {
+        const { project } = await this.getProject(chainId, id, signer);
+
+        if (project.avatarUrl != null) {
+            await this.minioService.deleteFile("project-avatar", project.avatarUrl);
+        }
+
+        const newFileName = "abc123"; // to-do
+
+        await this.minioService.uploadFile("project-avatar", newFileName, file);
+
+        project.$set({ avatarUrl: newFileName });
+
+        await project.save();
+
+        return newFileName;
     }
 
     async updateProjectSocials(
@@ -92,9 +112,27 @@ export class PortalCreatorService {
         return true;
     }
 
-    async updateProjectContent(chainId: number, id: number, signer: Address, data: any) {
-        // const { project } = await this.getProject(chainId, id, signer);
-        return [chainId, id, signer, data];
+    async updateProjectContent(
+        chainId: number,
+        id: number,
+        signer: Address,
+        file: Express.Multer.File
+    ) {
+        const { project } = await this.getProject(chainId, id, signer);
+
+        if (project.contentUrl != null) {
+            await this.minioService.deleteFile("project-content", project.contentUrl);
+        }
+
+        const newFileName = "abc123"; // to-do
+
+        await this.minioService.uploadFile("project-content", newFileName, file);
+
+        project.$set({ contentUrl: newFileName });
+
+        await project.save();
+
+        return newFileName;
     }
 
     async updateProjectPackages(
@@ -158,10 +196,10 @@ export class PortalCreatorService {
         id: number,
         packageId: number,
         signer: Address,
-        data: any
+        file: Express.Multer.File
     ) {
         // const { project } = await this.getProject(chainId, id, signer);
-        return [chainId, id, packageId, signer, data];
+        return [chainId, id, packageId, signer, file];
     }
 
     async updateProjectPackageContent(
@@ -169,10 +207,10 @@ export class PortalCreatorService {
         id: number,
         packageId: number,
         signer: Address,
-        data: any
+        file: Express.Multer.File
     ) {
         // const { project } = await this.getProject(chainId, id, signer);
-        return [chainId, id, packageId, signer, data];
+        return [chainId, id, packageId, signer, file];
     }
 
     private async getProject(chainId: number, id: number, checkOwner: Address) {
