@@ -25,9 +25,13 @@ export class MarkdownValidationPipe extends FileValidator<
     }
 
     async lint(file: Express.Multer.File): Promise<boolean> {
-        const result = await (
-            await markdownLint()
-        ).lint({ strings: { content: file.buffer.toString("utf-8") } });
+        const textContent = file.buffer.toString("utf-8");
+
+        if (textContent.includes("<!--")) {
+            return false;
+        }
+
+        const result = await (await markdownLint()).lint({ strings: { content: textContent } });
 
         if (!result || !result.content || !Array.isArray(result.content)) {
             return false;
