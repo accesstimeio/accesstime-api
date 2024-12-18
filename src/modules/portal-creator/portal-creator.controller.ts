@@ -14,7 +14,14 @@ import { FileInterceptor } from "@nestjs/platform-express";
 import { Address } from "viem";
 import { Express } from "express";
 
-import { Signer } from "src/signer.decorator";
+import {
+    PROJECT_AVATAR_UPLOAD_MAX_SIZE,
+    PROJECT_CONTENT_UPLOAD_MAX_SIZE,
+    PROJECT_PACKAGE_BACKGROUND_UPLOAD_MAX_SIZE,
+    PROJECT_PACKAGE_CONTENT_UPLOAD_MAX_SIZE
+} from "src/common";
+import { Signer } from "src/decorators/signer.decorator";
+import { FileTypeValidationPipe } from "src/pipes/file-type.validation.pipe";
 
 import { PortalCreatorService } from "./portal-creator.service";
 import {
@@ -36,7 +43,10 @@ export class PortalCreatorController {
         @Signer(true) signer: Address,
         @UploadedFile(
             new ParseFilePipe({
-                validators: [new MaxFileSizeValidator({ maxSize: 1024 * 300 })] // to-do
+                validators: [
+                    new MaxFileSizeValidator({ maxSize: PROJECT_AVATAR_UPLOAD_MAX_SIZE }),
+                    new FileTypeValidationPipe({ mimeType: "image/jpeg" })
+                ]
             })
         )
         file: Express.Multer.File
@@ -65,13 +75,17 @@ export class PortalCreatorController {
     }
 
     @Post("/update-project-content/:chainId/:id")
+    @UseInterceptors(FileInterceptor("file"))
     updateProjectContent(
         @Param("chainId") chainId: number,
         @Param("id") id: number,
         @Signer(true) signer: Address,
         @UploadedFile(
             new ParseFilePipe({
-                validators: [new MaxFileSizeValidator({ maxSize: 1024 })] // to-do
+                validators: [
+                    new MaxFileSizeValidator({ maxSize: PROJECT_CONTENT_UPLOAD_MAX_SIZE })
+                    // new FileTypeValidationPipe({ mimeType: "text/plain" })
+                ]
             })
         )
         file: Express.Multer.File
@@ -90,6 +104,7 @@ export class PortalCreatorController {
     }
 
     @Post("/update-project-package-image/:chainId/:id/:packageId")
+    @UseInterceptors(FileInterceptor("file"))
     updateProjectPackageImage(
         @Param("chainId") chainId: number,
         @Param("id") id: number,
@@ -97,7 +112,12 @@ export class PortalCreatorController {
         @Signer(true) signer: Address,
         @UploadedFile(
             new ParseFilePipe({
-                validators: [new MaxFileSizeValidator({ maxSize: 1024 })] // to-do
+                validators: [
+                    new MaxFileSizeValidator({
+                        maxSize: PROJECT_PACKAGE_BACKGROUND_UPLOAD_MAX_SIZE
+                    }),
+                    new FileTypeValidationPipe({ mimeType: "image/jpeg" })
+                ]
             })
         )
         file: Express.Multer.File
@@ -112,6 +132,7 @@ export class PortalCreatorController {
     }
 
     @Post("/update-project-package-content/:chainId/:id/:packageId")
+    @UseInterceptors(FileInterceptor("file"))
     updateProjectPackageContent(
         @Param("chainId") chainId: number,
         @Param("id") id: number,
@@ -119,7 +140,10 @@ export class PortalCreatorController {
         @Signer(true) signer: Address,
         @UploadedFile(
             new ParseFilePipe({
-                validators: [new MaxFileSizeValidator({ maxSize: 1024 })] // to-do
+                validators: [
+                    new MaxFileSizeValidator({ maxSize: PROJECT_PACKAGE_CONTENT_UPLOAD_MAX_SIZE })
+                    // new FileTypeValidationPipe({ mimeType: "text/plain" })
+                ]
             })
         )
         file: Express.Multer.File

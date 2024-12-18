@@ -30,3 +30,8 @@ export const SIGNATURE_AUTH_TYPES: TypedData = {
 export const SUPPORTED_CATEGORIES = []; // to-do
 
 export const SUPPORTED_SOCIAL_TYPES = []; // to-do
+
+export const PROJECT_AVATAR_UPLOAD_MAX_SIZE = 1024 * 300; // to-do
+export const PROJECT_PACKAGE_BACKGROUND_UPLOAD_MAX_SIZE = 1024 * 300; // to-do
+export const PROJECT_CONTENT_UPLOAD_MAX_SIZE = 1024 * 300; // to-do
+export const PROJECT_PACKAGE_CONTENT_UPLOAD_MAX_SIZE = 1024 * 300; // to-do
