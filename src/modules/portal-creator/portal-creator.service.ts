@@ -4,6 +4,7 @@ import { Document, Model } from "mongoose";
 import { Address } from "viem";
 
 import { SUPPORTED_CATEGORIES, SUPPORTED_SOCIAL_TYPES } from "src/common";
+import { generateFilename } from "src/helpers";
 
 import {
     UpdateProjectCategoriesDto,
@@ -35,7 +36,7 @@ export class PortalCreatorService {
             await this.minioService.deleteFile("project-avatar", project.avatarUrl);
         }
 
-        const newFileName = "abc123"; // to-do
+        const newFileName = generateFilename("project-avatar", signer);
 
         await this.minioService.uploadFile("project-avatar", newFileName, file);
 
@@ -124,7 +125,7 @@ export class PortalCreatorService {
             await this.minioService.deleteFile("project-content", project.contentUrl);
         }
 
-        const newFileName = "abc123"; // to-do
+        const newFileName = generateFilename("project-content", signer);
 
         await this.minioService.uploadFile("project-content", newFileName, file);
 
@@ -198,8 +199,43 @@ export class PortalCreatorService {
         signer: Address,
         file: Express.Multer.File
     ) {
-        // const { project } = await this.getProject(chainId, id, signer);
-        return [chainId, id, packageId, signer, file];
+        const { project, projectFromChain } = await this.getProject(chainId, id, signer);
+
+        if (!projectFromChain[0].packages.includes(packageId.toString())) {
+            throw new HttpException(
+                {
+                    errors: { message: "Given packages are not available." }
+                },
+                HttpStatus.BAD_REQUEST
+            );
+        }
+
+        const newPackages = project.packages.map(async (_package) => {
+            if (_package.id == packageId) {
+                if (_package.backgroundUrl != null) {
+                    await this.minioService.deleteFile(
+                        "project-package-background",
+                        _package.backgroundUrl
+                    );
+                }
+
+                const newFileName = generateFilename("project-package-background", signer);
+                await this.minioService.uploadFile("project-package-background", newFileName, file);
+
+                return {
+                    ..._package,
+                    backgroundUrl: newFileName
+                };
+            }
+
+            return _package;
+        });
+
+        project.$set({ packages: newPackages });
+
+        await project.save();
+
+        return true;
     }
 
     async updateProjectPackageContent(
@@ -209,8 +245,43 @@ export class PortalCreatorService {
         signer: Address,
         file: Express.Multer.File
     ) {
-        // const { project } = await this.getProject(chainId, id, signer);
-        return [chainId, id, packageId, signer, file];
+        const { project, projectFromChain } = await this.getProject(chainId, id, signer);
+
+        if (!projectFromChain[0].packages.includes(packageId.toString())) {
+            throw new HttpException(
+                {
+                    errors: { message: "Given packages are not available." }
+                },
+                HttpStatus.BAD_REQUEST
+            );
+        }
+
+        const newPackages = project.packages.map(async (_package) => {
+            if (_package.id == packageId) {
+                if (_package.contentUrl != null) {
+                    await this.minioService.deleteFile(
+                        "project-package-content",
+                        _package.contentUrl
+                    );
+                }
+
+                const newFileName = generateFilename("project-package-content", signer);
+                await this.minioService.uploadFile("project-package-content", newFileName, file);
+
+                return {
+                    ..._package,
+                    contentUrl: newFileName
+                };
+            }
+
+            return _package;
+        });
+
+        project.$set({ packages: newPackages });
+
+        await project.save();
+
+        return true;
     }
 
     private async getProject(chainId: number, id: number, checkOwner: Address) {

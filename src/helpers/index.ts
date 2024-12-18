@@ -1,7 +1,22 @@
 import { WEEK_IN_SECONDS } from "src/common";
+import { Address, encodeAbiParameters, keccak256 } from "viem";
 
-const getEpochWeek = () => Math.floor(Math.floor(Date.now() / 1000) / WEEK_IN_SECONDS);
+const nowDate = () => Math.floor(Date.now() / 1000);
 
-const aWeekAgo = () => Math.floor(Date.now() / 1000) - WEEK_IN_SECONDS;
+const getEpochWeek = () => Math.floor(nowDate() / WEEK_IN_SECONDS);
 
-export { getEpochWeek, aWeekAgo };
+const aWeekAgo = () => nowDate() - WEEK_IN_SECONDS;
+
+const generateFilename = (fileCategory: string, caller: Address) =>
+    keccak256(
+        encodeAbiParameters(
+            [
+                { name: "timestamp", type: "uint256" },
+                { name: "caller", type: "address" },
+                { name: "fileCategory", type: "string" }
+            ],
+            [BigInt(nowDate()), caller, fileCategory]
+        )
+    );
+
+export { getEpochWeek, aWeekAgo, generateFilename };
