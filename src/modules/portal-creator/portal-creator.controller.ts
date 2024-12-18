@@ -22,6 +22,7 @@ import {
 } from "src/common";
 import { Signer } from "src/decorators/signer.decorator";
 import { FileTypeValidationPipe } from "src/pipes/file-type.validation.pipe";
+import { MarkdownValidationPipe } from "src/pipes/markdown.validation.pipe";
 
 import { PortalCreatorService } from "./portal-creator.service";
 import {
@@ -83,8 +84,8 @@ export class PortalCreatorController {
         @UploadedFile(
             new ParseFilePipe({
                 validators: [
-                    new MaxFileSizeValidator({ maxSize: PROJECT_CONTENT_UPLOAD_MAX_SIZE })
-                    // new FileTypeValidationPipe({ mimeType: "text/plain" })
+                    new MaxFileSizeValidator({ maxSize: PROJECT_CONTENT_UPLOAD_MAX_SIZE }),
+                    new MarkdownValidationPipe({ maxError: 0 })
                 ]
             })
         )
@@ -141,8 +142,8 @@ export class PortalCreatorController {
         @UploadedFile(
             new ParseFilePipe({
                 validators: [
-                    new MaxFileSizeValidator({ maxSize: PROJECT_PACKAGE_CONTENT_UPLOAD_MAX_SIZE })
-                    // new FileTypeValidationPipe({ mimeType: "text/plain" })
+                    new MaxFileSizeValidator({ maxSize: PROJECT_PACKAGE_CONTENT_UPLOAD_MAX_SIZE }),
+                    new MarkdownValidationPipe({ maxError: 0 })
                 ]
             })
         )
