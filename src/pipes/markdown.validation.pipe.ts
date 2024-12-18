@@ -41,6 +41,12 @@ export class MarkdownValidationPipe extends FileValidator<
 
         if (Array.isArray(file)) {
             for (let i = 0; i < file.length; i++) {
+                const checkTextContent = this.isText(file[i]);
+                if (!checkTextContent) {
+                    validFile = false;
+                    break;
+                }
+
                 const result = await this.lint(file[i]);
                 if (!result) {
                     validFile = false;
