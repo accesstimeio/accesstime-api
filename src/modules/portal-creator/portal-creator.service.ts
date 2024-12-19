@@ -1,7 +1,7 @@
 import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Document, Model } from "mongoose";
-import { Address } from "viem";
+import { Address, Hash, zeroHash } from "viem";
 
 import { SUPPORTED_CATEGORIES, SUPPORTED_SOCIAL_TYPES } from "src/common";
 import { generateFilename } from "src/helpers";
@@ -210,6 +210,8 @@ export class PortalCreatorService {
             );
         }
 
+        let newFileName: Hash = zeroHash;
+
         const newPackages = project.packages.map(async (_package) => {
             if (_package.id == packageId) {
                 if (_package.backgroundUrl != null) {
@@ -219,7 +221,7 @@ export class PortalCreatorService {
                     );
                 }
 
-                const newFileName = generateFilename("project-package-background", signer);
+                newFileName = generateFilename("project-package-background", signer);
                 await this.minioService.uploadFile("project-package-background", newFileName, file);
 
                 return {
@@ -235,7 +237,7 @@ export class PortalCreatorService {
 
         await project.save();
 
-        return true;
+        return newFileName;
     }
 
     async updateProjectPackageContent(
@@ -256,6 +258,8 @@ export class PortalCreatorService {
             );
         }
 
+        let newFileName: Hash = zeroHash;
+
         const newPackages = project.packages.map(async (_package) => {
             if (_package.id == packageId) {
                 if (_package.contentUrl != null) {
@@ -265,7 +269,7 @@ export class PortalCreatorService {
                     );
                 }
 
-                const newFileName = generateFilename("project-package-content", signer);
+                newFileName = generateFilename("project-package-content", signer);
                 await this.minioService.uploadFile("project-package-content", newFileName, file);
 
                 return {
@@ -281,7 +285,7 @@ export class PortalCreatorService {
 
         await project.save();
 
-        return true;
+        return newFileName;
     }
 
     private async getProject(chainId: number, id: number, checkOwner: Address) {

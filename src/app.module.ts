@@ -64,6 +64,19 @@ const NODE_ENV = process.env.NODE_ENV;
                         module: PortalCreatorModule
                     }
                 ]
+            },
+            {
+                path: "dashboard",
+                children: [
+                    {
+                        path: "deployment",
+                        module: DeploymentModule
+                    },
+                    {
+                        path: "project",
+                        module: ProjectModule
+                    }
+                ]
             }
         ]),
         NestMinioModule.registerAsync({

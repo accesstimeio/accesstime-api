@@ -5,7 +5,7 @@ import { ProjectResponseDto } from "./dto";
 import { ProjectService } from "./project.service";
 
 @UsePipes(new ValidationPipe({ transform: true }))
-@Controller("project")
+@Controller()
 export class ProjectController {
     constructor(private readonly projectService: ProjectService) {}
 

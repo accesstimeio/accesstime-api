@@ -25,7 +25,7 @@ export class PortalController {
     })
     @ApiQuery({
         name: "sort",
-        type: Number,
+        type: String,
         required: false
     })
     @ApiResponse({
@@ -35,15 +35,10 @@ export class PortalController {
     async getExplore(
         @Param("chainId") chainId: number,
         @Query("page") page: number,
-        @Query("sort") sort: string,
+        @Query("sort") sort: SUPPORTED_PORTAL_SORT_TYPE,
         @Signer(false) signer: Address
     ) {
-        return this.portalService.getExplore(
-            chainId,
-            page,
-            sort as SUPPORTED_PORTAL_SORT_TYPE,
-            signer
-        );
+        return this.portalService.getExplore(chainId, page, sort, signer);
     }
 
     @ApiQuery({
