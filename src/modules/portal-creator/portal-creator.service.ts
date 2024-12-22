@@ -2,8 +2,8 @@ import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Document, Model } from "mongoose";
 import { Address, Hash, zeroHash } from "viem";
+import { Portal } from "@accesstimeio/accesstime-common";
 
-import { SUPPORTED_CATEGORIES, SUPPORTED_SOCIAL_TYPES } from "src/common";
 import { generateFilename } from "src/helpers";
 
 import {
@@ -58,7 +58,7 @@ export class PortalCreatorService {
         let foundUnsupportedSocialType: boolean = false;
         for (let i = 0; i < data.payload.length; i++) {
             const { type } = data.payload[i];
-            if (isNaN(Number(type)) || !SUPPORTED_SOCIAL_TYPES.includes(Number(type))) {
+            if (isNaN(Number(type)) || !Portal.socialTypes.includes(Number(type))) {
                 foundUnsupportedSocialType = true;
             }
         }
@@ -92,7 +92,7 @@ export class PortalCreatorService {
         let foundUnsupportedCategory: boolean = false;
         for (let i = 0; i < data.payload.length; i++) {
             const category = data.payload[i];
-            if (isNaN(Number(category)) || !SUPPORTED_CATEGORIES.includes(Number(category))) {
+            if (isNaN(Number(category)) || !Portal.categories.includes(Number(category))) {
                 foundUnsupportedCategory = true;
             }
         }

@@ -13,13 +13,8 @@ import {
 import { FileInterceptor } from "@nestjs/platform-express";
 import { Address } from "viem";
 import { Express } from "express";
+import { Portal } from "@accesstimeio/accesstime-common";
 
-import {
-    PROJECT_AVATAR_UPLOAD_MAX_SIZE,
-    PROJECT_CONTENT_UPLOAD_MAX_SIZE,
-    PROJECT_PACKAGE_BACKGROUND_UPLOAD_MAX_SIZE,
-    PROJECT_PACKAGE_CONTENT_UPLOAD_MAX_SIZE
-} from "src/common";
 import { Signer } from "src/decorators/signer.decorator";
 import { FileTypeValidationPipe } from "src/pipes/file-type.validation.pipe";
 import { MarkdownValidationPipe } from "src/pipes/markdown.validation.pipe";
@@ -45,7 +40,7 @@ export class PortalCreatorController {
         @UploadedFile(
             new ParseFilePipe({
                 validators: [
-                    new MaxFileSizeValidator({ maxSize: PROJECT_AVATAR_UPLOAD_MAX_SIZE }),
+                    new MaxFileSizeValidator({ maxSize: Portal.uploadMaxSizes.avatar }),
                     new FileTypeValidationPipe({ mimeType: "image/jpeg" })
                 ]
             })
@@ -84,7 +79,7 @@ export class PortalCreatorController {
         @UploadedFile(
             new ParseFilePipe({
                 validators: [
-                    new MaxFileSizeValidator({ maxSize: PROJECT_CONTENT_UPLOAD_MAX_SIZE }),
+                    new MaxFileSizeValidator({ maxSize: Portal.uploadMaxSizes.content }),
                     new MarkdownValidationPipe({ maxError: 0 })
                 ]
             })
@@ -115,7 +110,7 @@ export class PortalCreatorController {
             new ParseFilePipe({
                 validators: [
                     new MaxFileSizeValidator({
-                        maxSize: PROJECT_PACKAGE_BACKGROUND_UPLOAD_MAX_SIZE
+                        maxSize: Portal.uploadMaxSizes.packageBackground
                     }),
                     new FileTypeValidationPipe({ mimeType: "image/jpeg" })
                 ]
@@ -142,7 +137,7 @@ export class PortalCreatorController {
         @UploadedFile(
             new ParseFilePipe({
                 validators: [
-                    new MaxFileSizeValidator({ maxSize: PROJECT_PACKAGE_CONTENT_UPLOAD_MAX_SIZE }),
+                    new MaxFileSizeValidator({ maxSize: Portal.uploadMaxSizes.packageContent }),
                     new MarkdownValidationPipe({ maxError: 0 })
                 ]
             })

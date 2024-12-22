@@ -1,8 +1,8 @@
 import { NestFactory } from "@nestjs/core";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
+import { Api } from "@accesstimeio/accesstime-common";
 
 import { AppModule } from "./app.module";
-import { API_VERSION } from "./common";
 
 async function bootstrap() {
     const app = await NestFactory.create(AppModule);
@@ -31,7 +31,7 @@ async function bootstrap() {
     const config = new DocumentBuilder()
         .setTitle("AccessTime")
         .setDescription("API")
-        .setVersion(API_VERSION)
+        .setVersion(Api.version)
         .build();
     const document = SwaggerModule.createDocument(app, config);
     SwaggerModule.setup("api", app, document);

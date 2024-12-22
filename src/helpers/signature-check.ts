@@ -1,14 +1,8 @@
 import { HttpException, HttpStatus } from "@nestjs/common";
-import { Address, decodeAbiParameters, Hash, isAddress, verifyTypedData, zeroAddress } from "viem";
+import { Address, decodeAbiParameters, Hash, isAddress, zeroAddress } from "viem";
+import { Api, AuthSignature } from "@accesstimeio/accesstime-common";
 
 import { aWeekAgo } from "src/helpers";
-
-import {
-    API_VERSION,
-    SIGNATURE_AUTH_DOMAIN,
-    SIGNATURE_AUTH_MESSAGE_ABI_PARAMETERS,
-    SIGNATURE_AUTH_TYPES
-} from "src/common";
 
 export const signatureCheck = async (
     message: Hash,
@@ -27,7 +21,7 @@ export const signatureCheck = async (
         );
     }
 
-    const messageValues = decodeAbiParameters(SIGNATURE_AUTH_MESSAGE_ABI_PARAMETERS, message);
+    const messageValues = decodeAbiParameters(AuthSignature.abiParameters, message);
     const messageTimestamp = Number(messageValues[0].toString());
     const messageCaller = messageValues[1];
 
@@ -55,7 +49,7 @@ export const signatureCheck = async (
         );
     }
 
-    if (messageValues[2] != API_VERSION) {
+    if (messageValues[2] != Api.version) {
         if (!throwError) {
             return [false, zeroAddress];
         }
@@ -67,18 +61,11 @@ export const signatureCheck = async (
         );
     }
 
-    const isValid = await verifyTypedData({
-        address: messageCaller,
-        domain: SIGNATURE_AUTH_DOMAIN,
-        types: SIGNATURE_AUTH_TYPES,
-        primaryType: "Auth",
-        message: {
-            timestamp: messageTimestamp,
-            caller: messageCaller,
-            apiVersion: API_VERSION
-        },
-        signature: signature
-    });
+    const isValid = await AuthSignature.verifyAuthConfig(
+        BigInt(messageTimestamp),
+        messageCaller,
+        signature
+    );
 
     if (!isValid) {
         if (!throwError) {

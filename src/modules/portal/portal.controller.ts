@@ -1,8 +1,8 @@
 import { Controller, Get, Param, Post, Query, UsePipes, ValidationPipe } from "@nestjs/common";
 import { ApiQuery, ApiResponse } from "@nestjs/swagger";
 import { Address } from "viem";
+import { SUPPORTED_SORT_TYPE } from "@accesstimeio/accesstime-common";
 
-import { SUPPORTED_PORTAL_SORT_TYPE } from "src/common";
 import { Signer } from "src/decorators/signer.decorator";
 
 import { PortalService } from "./portal.service";
@@ -35,7 +35,7 @@ export class PortalController {
     async getExplore(
         @Param("chainId") chainId: number,
         @Query("page") page: number,
-        @Query("sort") sort: SUPPORTED_PORTAL_SORT_TYPE,
+        @Query("sort") sort: SUPPORTED_SORT_TYPE,
         @Signer(false) signer: Address
     ) {
         return this.portalService.getExplore(chainId, page, sort, signer);

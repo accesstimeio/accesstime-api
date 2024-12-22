@@ -2,8 +2,7 @@ import { Inject, Injectable, forwardRef } from "@nestjs/common";
 import { CACHE_MANAGER, Cache } from "@nestjs/cache-manager";
 import { GraphQLClient } from "graphql-request";
 import { Address } from "viem";
-
-import { SUPPORTED_CHAIN_IDS } from "src/common";
+import { Chain } from "@accesstimeio/accesstime-common";
 
 import {
     SyncResponse,
@@ -22,7 +21,8 @@ import {
     WeeklyPopularProjectsResponse,
     WeeklyPopularProjectsDocument,
     ProjectWeeklyVoteDocument,
-    ProjectWeeklyVoteResponse
+    ProjectWeeklyVoteResponse,
+    CountProjectsDocument
 } from "./query";
 
 import { DeploymentService } from "../deployment/deployment.service";
@@ -43,7 +43,7 @@ export class SubgraphService {
         private readonly projectService: ProjectService
     ) {
         const subgraphUrls = process.env.SUBGRAPH_URL.split(",");
-        SUPPORTED_CHAIN_IDS.forEach((chainId, index) => {
+        Chain.ids.forEach((chainId, index) => {
             this.client[chainId] = null;
             this.clientUrls[chainId] = subgraphUrls[index];
         });
@@ -183,7 +183,7 @@ export class SubgraphService {
 
     async countProjects(chainId: number): Promise<number> {
         try {
-            const result = await this.getClient(chainId).request(CountDeploymentsDocument);
+            const result = await this.getClient(chainId).request(CountProjectsDocument);
             const { accessTimes } = result as { accessTimes: CountProjectsResponse[] };
 
             return accessTimes == null
@@ -199,7 +199,7 @@ export class SubgraphService {
     async newestProjects(chainId: number, page?: number): Promise<NewestProjectsResponse[]> {
         try {
             const limit = Number(process.env.PAGE_ITEM_LIMIT);
-            const skip = page ? page * limit : 0;
+            const skip = page ? (page - 1) * limit : 0;
             const result = await this.getClient(chainId).request(NewestProjectsDocument, {
                 limit,
                 skip
@@ -215,7 +215,7 @@ export class SubgraphService {
     async topRatedProjects(chainId: number, page?: number): Promise<TopRatedProjectsResponse[]> {
         try {
             const limit = Number(process.env.PAGE_ITEM_LIMIT);
-            const skip = page ? page * limit : 0;
+            const skip = page ? (page - 1) * limit : 0;
             const result = await this.getClient(chainId).request(TopRatedProjectsDocument, {
                 limit,
                 skip
@@ -235,7 +235,7 @@ export class SubgraphService {
     ): Promise<WeeklyPopularProjectsResponse[]> {
         try {
             const limit = Number(process.env.PAGE_ITEM_LIMIT);
-            const skip = page ? page * limit : 0;
+            const skip = page ? (page - 1) * limit : 0;
             const result = await this.getClient(chainId).request(WeeklyPopularProjectsDocument, {
                 epochWeek,
                 limit,

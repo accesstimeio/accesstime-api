@@ -2,13 +2,9 @@ import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Document, Model } from "mongoose";
 import { Address } from "viem";
+import { SUPPORTED_SORT_TYPE, Portal } from "@accesstimeio/accesstime-common";
 
 import { getEpochWeek } from "src/helpers";
-import {
-    DEFAULT_SORT_TYPE,
-    SUPPORTED_PORTAL_SORT_TYPE,
-    SUPPORTED_PORTAL_SORT_TYPES
-} from "src/common";
 
 import { Project } from "./schemas/project.schema";
 import { ProjectFavorite } from "./schemas/project-favorite.schema";
@@ -28,16 +24,16 @@ export class PortalService {
     async getExplore(
         chainId: number,
         page?: number,
-        sort?: SUPPORTED_PORTAL_SORT_TYPE,
+        sort?: SUPPORTED_SORT_TYPE,
         user?: Address
     ): Promise<ExploreResponseDto> {
-        const queryPage = page ?? 0;
+        const queryPage = page ?? 1;
         const limit = Number(process.env.PAGE_ITEM_LIMIT);
-        let querySort: SUPPORTED_PORTAL_SORT_TYPE = DEFAULT_SORT_TYPE;
+        let querySort: SUPPORTED_SORT_TYPE = Portal.defaultSortType;
         let countProjects: number = 0;
 
         if (sort) {
-            if (SUPPORTED_PORTAL_SORT_TYPES.includes(sort)) {
+            if (Portal.sortTypes.includes(sort)) {
                 querySort = sort;
             } else {
                 throw new HttpException(
@@ -54,8 +50,7 @@ export class PortalService {
         if (querySort != "weekly_popular") {
             countProjects = await this.subgraphService.countProjects(chainId);
 
-            const requestable =
-                limit - ((queryPage + 1) * limit - countProjects) > 0 ? true : false;
+            const requestable = limit - (queryPage * limit - countProjects) > 0 ? true : false;
 
             if (!requestable) {
                 throw new HttpException(

@@ -1,7 +1,7 @@
 {
   "name": "accesstime-api",
   "license": "MIT",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "API of AccessTime Apps",
   "author": {
     "name": "AccessTime",
@@ -28,6 +28,7 @@
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
+    "@accesstimeio/accesstime-common": "^1.0.7",
     "@nestjs/cache-manager": "^2.2.2",
     "@nestjs/common": "^10.0.0",
     "@nestjs/config": "^3.2.2",
