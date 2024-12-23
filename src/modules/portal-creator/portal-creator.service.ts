@@ -66,13 +66,28 @@ export class PortalCreatorService {
         if (foundUnsupportedSocialType) {
             throw new HttpException(
                 {
-                    errors: { message: "Given social types are not supported." }
+                    errors: { message: "Given social type(s) are not supported." }
                 },
                 HttpStatus.BAD_REQUEST
             );
         }
 
-        // to-do, compore urls with given types or just save path of url
+        let foundUnsupportedSocialUrl: boolean = false;
+        for (let i = 0; i < data.payload.length; i++) {
+            const { type, url } = data.payload[i];
+            if (!Portal.socialUrlVerify(type, url)) {
+                foundUnsupportedSocialUrl = true;
+            }
+        }
+
+        if (foundUnsupportedSocialUrl) {
+            throw new HttpException(
+                {
+                    errors: { message: "Given social url(s) are not correct." }
+                },
+                HttpStatus.BAD_REQUEST
+            );
+        }
 
         project.$set({ socials: data.payload });
 
