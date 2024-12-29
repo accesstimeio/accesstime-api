@@ -51,6 +51,12 @@ export class ProjectCardDto {
     @Expose()
     @ApiProperty()
     isFavorited: boolean;
+
+    @Expose()
+    @ApiProperty({
+        isArray: true
+    })
+    categories: number[];
 }
 
 export class ProjectDto extends OmitType(ProjectCardDto, ["id"]) {
@@ -62,12 +68,6 @@ export class ProjectDto extends OmitType(ProjectCardDto, ["id"]) {
     @ValidateNested({ each: true })
     @Type(() => ProjectSocialDto)
     socials: ProjectSocialDto[];
-
-    @Expose()
-    @ApiProperty({
-        isArray: true
-    })
-    categories: number[];
 
     @Expose()
     @ApiProperty()

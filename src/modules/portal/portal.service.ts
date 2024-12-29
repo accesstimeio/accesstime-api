@@ -1,7 +1,7 @@
 import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Document, Model } from "mongoose";
-import { Address } from "viem";
+import { Address, isAddress } from "viem";
 import { SUPPORTED_SORT_TYPE, Portal } from "@accesstimeio/accesstime-common";
 
 import { getEpochWeek } from "src/helpers";
@@ -25,6 +25,7 @@ export class PortalService {
         chainId: number,
         page?: number,
         sort?: SUPPORTED_SORT_TYPE,
+        paymentMethods?: Address[],
         user?: Address
     ): Promise<ExploreResponseDto> {
         const queryPage = page ?? 1;
@@ -43,6 +44,29 @@ export class PortalService {
                     HttpStatus.EXPECTATION_FAILED
                 );
             }
+        }
+
+        if (paymentMethods) {
+            let notSupportedPaymentMethod: boolean = false;
+            for (let i = 0; i < paymentMethods.length; i++) {
+                if (!isAddress(paymentMethods[i])) {
+                    notSupportedPaymentMethod = true;
+                    break;
+                }
+            }
+
+            if (notSupportedPaymentMethod) {
+                throw new HttpException(
+                    {
+                        errors: { message: "Requested payment method is not supported." }
+                    },
+                    HttpStatus.EXPECTATION_FAILED
+                );
+            }
+
+            paymentMethods = paymentMethods.map(
+                (paymentMethod) => paymentMethod.toLowerCase() as Address
+            );
         }
 
         let projects: ProjectCardDto[] = [];
@@ -70,7 +94,8 @@ export class PortalService {
             case "newest":
                 const newestProjects = await this.subgraphService.newestProjects(
                     chainId,
-                    queryPage
+                    queryPage,
+                    paymentMethods
                 );
 
                 newestProjects.forEach(({ id, totalVotePoint, totalVoteParticipantCount }) => {
@@ -79,14 +104,16 @@ export class PortalService {
                         avatarUrl: null,
                         votePoint: Number(totalVotePoint),
                         voteParticipantCount: Number(totalVoteParticipantCount),
-                        isFavorited: false
+                        isFavorited: false,
+                        categories: []
                     });
                 });
                 break;
             case "top_rated":
                 const topRatedProjects = await this.subgraphService.topRatedProjects(
                     chainId,
-                    queryPage
+                    queryPage,
+                    paymentMethods
                 );
 
                 topRatedProjects.forEach(({ id, totalVotePoint, totalVoteParticipantCount }) => {
@@ -95,7 +122,8 @@ export class PortalService {
                         avatarUrl: null,
                         votePoint: Number(totalVotePoint),
                         voteParticipantCount: Number(totalVoteParticipantCount),
-                        isFavorited: false
+                        isFavorited: false,
+                        categories: []
                     });
                 });
                 break;
@@ -103,7 +131,8 @@ export class PortalService {
                 const weeklyPopularProjects = await this.subgraphService.weeklyPopularProjects(
                     chainId,
                     getEpochWeek(),
-                    queryPage
+                    queryPage,
+                    paymentMethods
                 );
 
                 weeklyPopularProjects.forEach(({ accessTime, totalPoint, participantCount }) => {
@@ -112,7 +141,8 @@ export class PortalService {
                         avatarUrl: null,
                         votePoint: Number(totalPoint),
                         voteParticipantCount: Number(participantCount),
-                        isFavorited: false
+                        isFavorited: false,
+                        categories: []
                     });
                 });
                 break;
@@ -124,7 +154,7 @@ export class PortalService {
             .find({ chainId })
             .where("id")
             .in(projectIds)
-            .select(["id", "avatar"])
+            .select(["id", "avatar", "categories"])
             .exec();
 
         let userFavorites: ProjectFavorite[] = [];
@@ -141,6 +171,7 @@ export class PortalService {
         projects = projects.map((project) => ({
             ...project,
             avatarUrl: projectDocuments.find((pd) => pd.id == project.id)?.avatarUrl ?? null,
+            categories: projectDocuments.find((pd) => pd.id == project.id)?.categories ?? [],
             isFavorited: userFavorites.find((uf) => uf.id == uf.id) ? true : false
         }));
 
@@ -186,7 +217,7 @@ export class PortalService {
             .find()
             .where("id")
             .in(userFavoritedProjectIds)
-            .select(["address", "avatar"])
+            .select(["address", "avatar", "categories"])
             .exec();
 
         const projects: ProjectCardDto[] = userFavoriteProjectDocuments.map((project) => ({
@@ -194,7 +225,8 @@ export class PortalService {
             avatarUrl: project.avatarUrl,
             votePoint: 0,
             voteParticipantCount: 0,
-            isFavorited: true
+            isFavorited: true,
+            categories: project.categories
         }));
 
         return {
@@ -264,7 +296,7 @@ export class PortalService {
 
         return {
             avatarUrl,
-            votePoint: projectWeeklyVote.length > 0 ? Number(projectWeeklyVote[0].totalPoint) : 0,
+            votePoint: projectWeeklyVote.length > 0 ? Number(projectWeeklyVote[0].votePoint) : 0,
             voteParticipantCount:
                 projectWeeklyVote.length > 0 ? Number(projectWeeklyVote[0].participantCount) : 0,
             isFavorited,

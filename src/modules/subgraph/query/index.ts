@@ -112,8 +112,14 @@ export interface NewestProjectsResponse {
 }
 
 export const NewestProjectsDocument = gql`
-    query NewestProjects($limit: Int!, $skip: Int!) {
-        accessTimes(orderDirection: desc, orderBy: accessTimeId, first: $limit, skip: $skip) {
+    query NewestProjects($limit: Int!, $skip: Int!, $paymentMethods: [Bytes!]) {
+        accessTimes(
+            orderDirection: desc
+            orderBy: accessTimeId
+            first: $limit
+            skip: $skip
+            where: { paymentMethods_contains: $paymentMethods }
+        ) {
             id
             totalVotePoint
             totalVoteParticipantCount
@@ -124,8 +130,14 @@ export const NewestProjectsDocument = gql`
 export interface TopRatedProjectsResponse extends NewestProjectsResponse {}
 
 export const TopRatedProjectsDocument = gql`
-    query TopRatedProjects($limit: Int!, $skip: Int!) {
-        accessTimes(orderDirection: desc, orderBy: totalVotePoint, first: $limit, skip: $skip) {
+    query TopRatedProjects($limit: Int!, $skip: Int!, $paymentMethods: [Bytes!]) {
+        accessTimes(
+            orderDirection: desc
+            orderBy: totalVotePoint
+            first: $limit
+            skip: $skip
+            where: { paymentMethods_contains: $paymentMethods }
+        ) {
             id
             totalVotePoint
             totalVoteParticipantCount
@@ -142,33 +154,45 @@ export type WeeklyPopularProjectsResponse = {
 };
 
 export const WeeklyPopularProjectsDocument = gql`
-    query WeeklyPopularProjects($epochWeek: BigInt!, $limit: Int!, $skip: Int!) {
+    query WeeklyPopularProjects(
+        $epochWeek: BigInt!
+        $limit: Int!
+        $skip: Int!
+        $paymentMethods: [Bytes!]
+    ) {
         accessVotes(
             orderDirection: desc
-            orderBy: totalPoint
+            orderBy: votePoint
             first: $limit
             skip: $skip
-            where: { epochWeek: $epochWeek }
+            where: {
+                and: [
+                    { accessTime_: { paymentMethods_contains: $paymentMethods } }
+                    { epochWeek: $epochWeek }
+                ]
+            }
         ) {
             accessTime {
                 id
             }
             participantCount
-            totalPoint
+            votePoint
         }
     }
 `;
 
 export type ProjectWeeklyVoteResponse = {
     participantCount: string;
-    totalPoint: string;
+    votePoint: string;
 };
 
 export const ProjectWeeklyVoteDocument = gql`
     query ProjectWeeklyVote($epochWeek: BigInt!, $accessTime: Bytes!) {
-        accessVotes(where: { epochWeek: $epochWeek, accessTime: $accessTime }) {
+        accessVotes(
+            where: { and: [{ accessTime_: { id: $accessTime } }, { epochWeek: $epochWeek }] }
+        ) {
             participantCount
-            totalPoint
+            votePoint
         }
     }
 `;

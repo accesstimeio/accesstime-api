@@ -198,13 +198,19 @@ export class SubgraphService {
         }
     }
 
-    async newestProjects(chainId: number, page?: number): Promise<NewestProjectsResponse[]> {
+    async newestProjects(
+        chainId: number,
+        page?: number,
+        paymentMethods?: Address[]
+    ): Promise<NewestProjectsResponse[]> {
         try {
             const limit = Number(process.env.PAGE_ITEM_LIMIT);
             const skip = page ? (page - 1) * limit : 0;
+            paymentMethods ??= [];
             const result = await this.getClient(chainId).request(NewestProjectsDocument, {
                 limit,
-                skip
+                skip,
+                paymentMethods
             });
             const { accessTimes } = result as { accessTimes: NewestProjectsResponse[] };
 
@@ -214,13 +220,19 @@ export class SubgraphService {
         }
     }
 
-    async topRatedProjects(chainId: number, page?: number): Promise<TopRatedProjectsResponse[]> {
+    async topRatedProjects(
+        chainId: number,
+        page?: number,
+        paymentMethods?: Address[]
+    ): Promise<TopRatedProjectsResponse[]> {
         try {
             const limit = Number(process.env.PAGE_ITEM_LIMIT);
             const skip = page ? (page - 1) * limit : 0;
+            paymentMethods ??= [];
             const result = await this.getClient(chainId).request(TopRatedProjectsDocument, {
                 limit,
-                skip
+                skip,
+                paymentMethods
             });
             const { accessTimes } = result as { accessTimes: TopRatedProjectsResponse[] };
 
@@ -233,15 +245,18 @@ export class SubgraphService {
     async weeklyPopularProjects(
         chainId: number,
         epochWeek: number,
-        page?: number
+        page?: number,
+        paymentMethods?: Address[]
     ): Promise<WeeklyPopularProjectsResponse[]> {
         try {
             const limit = Number(process.env.PAGE_ITEM_LIMIT);
             const skip = page ? (page - 1) * limit : 0;
+            paymentMethods ??= [];
             const result = await this.getClient(chainId).request(WeeklyPopularProjectsDocument, {
                 epochWeek,
                 limit,
-                skip
+                skip,
+                paymentMethods
             });
             const { accessVotes } = result as { accessVotes: WeeklyPopularProjectsResponse[] };
 
