@@ -49,17 +49,21 @@ export class PortalService {
 
         if (querySort != "weekly_popular") {
             countProjects = await this.subgraphService.countProjects(chainId);
+        } else {
+            countProjects = await this.subgraphService.countWeeklyVoteProjects(
+                chainId,
+                getEpochWeek()
+            );
+        }
+        const requestable = limit - (queryPage * limit - countProjects) > 0 ? true : false;
 
-            const requestable = limit - (queryPage * limit - countProjects) > 0 ? true : false;
-
-            if (!requestable) {
-                throw new HttpException(
-                    {
-                        errors: { message: "Requested page exceeds page limit." }
-                    },
-                    HttpStatus.EXPECTATION_FAILED
-                );
-            }
+        if (!requestable) {
+            throw new HttpException(
+                {
+                    errors: { message: "Requested page exceeds page limit." }
+                },
+                HttpStatus.EXPECTATION_FAILED
+            );
         }
 
         switch (querySort) {
@@ -104,7 +108,7 @@ export class PortalService {
 
                 weeklyPopularProjects.forEach(({ accessTime, totalPoint, participantCount }) => {
                     projects.push({
-                        id: accessTime,
+                        id: accessTime.id,
                         avatarUrl: null,
                         votePoint: Number(totalPoint),
                         voteParticipantCount: Number(participantCount),

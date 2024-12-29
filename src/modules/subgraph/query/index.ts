@@ -134,7 +134,9 @@ export const TopRatedProjectsDocument = gql`
 `;
 
 export type WeeklyPopularProjectsResponse = {
-    accessTime: Address;
+    accessTime: {
+        id: Address;
+    };
     participantCount: string;
     totalPoint: string;
 };
@@ -148,7 +150,9 @@ export const WeeklyPopularProjectsDocument = gql`
             skip: $skip
             where: { epochWeek: $epochWeek }
         ) {
-            accessTime
+            accessTime {
+                id
+            }
             participantCount
             totalPoint
         }
@@ -165,6 +169,18 @@ export const ProjectWeeklyVoteDocument = gql`
         accessVotes(where: { epochWeek: $epochWeek, accessTime: $accessTime }) {
             participantCount
             totalPoint
+        }
+    }
+`;
+
+export type CountWeeklyVoteProjectsResponse = {
+    participantCount: string;
+};
+
+export const CountWeeklyVoteProjectsDocument = gql`
+    query CountWeeklyVoteProjects($epochWeek: String!) {
+        weeklyVote(id: $epochWeek) {
+            participantCount
         }
     }
 `;

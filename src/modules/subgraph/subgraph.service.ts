@@ -22,7 +22,9 @@ import {
     WeeklyPopularProjectsDocument,
     ProjectWeeklyVoteDocument,
     ProjectWeeklyVoteResponse,
-    CountProjectsDocument
+    CountProjectsDocument,
+    CountWeeklyVoteProjectsDocument,
+    CountWeeklyVoteProjectsResponse
 } from "./query";
 
 import { DeploymentService } from "../deployment/deployment.service";
@@ -189,7 +191,7 @@ export class SubgraphService {
             return accessTimes == null
                 ? 0
                 : accessTimes.length != 0
-                  ? Number(accessTimes[0].accessTimeId)
+                  ? Number(accessTimes[0].accessTimeId) + 1
                   : 0;
         } catch (_err) {
             throw new Error("[countProjects]: Subgraph query failed!");
@@ -264,6 +266,19 @@ export class SubgraphService {
             return accessVotes == null ? [] : accessVotes;
         } catch (_err) {
             throw new Error("[projectWeeklyVote]: Subgraph query failed!");
+        }
+    }
+
+    async countWeeklyVoteProjects(chainId: number, epochWeek: number): Promise<number> {
+        try {
+            const result = await this.getClient(chainId).request(CountWeeklyVoteProjectsDocument, {
+                epochWeek: epochWeek.toString()
+            });
+            const { weeklyVote } = result as { weeklyVote: CountWeeklyVoteProjectsResponse };
+
+            return weeklyVote == null ? 0 : Number(weeklyVote.participantCount);
+        } catch (_err) {
+            throw new Error("[countProjects]: Subgraph query failed!");
         }
     }
 }
