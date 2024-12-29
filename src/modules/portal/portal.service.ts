@@ -81,7 +81,7 @@ export class PortalService {
         }
         const requestable = limit - (queryPage * limit - countProjects) > 0 ? true : false;
 
-        if (!requestable) {
+        if (countProjects > 0 && !requestable) {
             throw new HttpException(
                 {
                     errors: { message: "Requested page exceeds page limit." }
