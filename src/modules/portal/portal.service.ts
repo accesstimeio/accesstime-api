@@ -12,6 +12,10 @@ import { ExploreResponseDto, ProjectCardDto, ProjectDto, UserFavoritesResponseDt
 
 import { SubgraphService } from "../subgraph/subgraph.service";
 
+interface CacheProject extends ProjectCardDto {
+    accessTimeId: number;
+}
+
 @Injectable()
 export class PortalService {
     constructor(
@@ -69,7 +73,7 @@ export class PortalService {
             );
         }
 
-        let projects: ProjectCardDto[] = [];
+        let projects: CacheProject[] = [];
 
         if (querySort != "weekly_popular") {
             countProjects = await this.subgraphService.countProjects(chainId);
@@ -81,7 +85,7 @@ export class PortalService {
         }
         const requestable = limit - (queryPage * limit - countProjects) > 0 ? true : false;
 
-        if (countProjects > 0 && !requestable) {
+        if (queryPage != 1 && !requestable) {
             throw new HttpException(
                 {
                     errors: { message: "Requested page exceeds page limit." }
@@ -98,16 +102,19 @@ export class PortalService {
                     paymentMethods
                 );
 
-                newestProjects.forEach(({ id, totalVotePoint, totalVoteParticipantCount }) => {
-                    projects.push({
-                        id,
-                        avatarUrl: null,
-                        votePoint: Number(totalVotePoint),
-                        voteParticipantCount: Number(totalVoteParticipantCount),
-                        isFavorited: false,
-                        categories: []
-                    });
-                });
+                newestProjects.forEach(
+                    ({ id, accessTimeId, totalVotePoint, totalVoteParticipantCount }) => {
+                        projects.push({
+                            id,
+                            accessTimeId: Number(accessTimeId),
+                            avatarUrl: null,
+                            votePoint: Number(totalVotePoint),
+                            voteParticipantCount: Number(totalVoteParticipantCount),
+                            isFavorited: false,
+                            categories: []
+                        });
+                    }
+                );
                 break;
             case "top_rated":
                 const topRatedProjects = await this.subgraphService.topRatedProjects(
@@ -116,16 +123,19 @@ export class PortalService {
                     paymentMethods
                 );
 
-                topRatedProjects.forEach(({ id, totalVotePoint, totalVoteParticipantCount }) => {
-                    projects.push({
-                        id,
-                        avatarUrl: null,
-                        votePoint: Number(totalVotePoint),
-                        voteParticipantCount: Number(totalVoteParticipantCount),
-                        isFavorited: false,
-                        categories: []
-                    });
-                });
+                topRatedProjects.forEach(
+                    ({ id, accessTimeId, totalVotePoint, totalVoteParticipantCount }) => {
+                        projects.push({
+                            id,
+                            accessTimeId: Number(accessTimeId),
+                            avatarUrl: null,
+                            votePoint: Number(totalVotePoint),
+                            voteParticipantCount: Number(totalVoteParticipantCount),
+                            isFavorited: false,
+                            categories: []
+                        });
+                    }
+                );
                 break;
             default:
                 const weeklyPopularProjects = await this.subgraphService.weeklyPopularProjects(
@@ -138,6 +148,7 @@ export class PortalService {
                 weeklyPopularProjects.forEach(({ accessTime, totalPoint, participantCount }) => {
                     projects.push({
                         id: accessTime.id,
+                        accessTimeId: Number(accessTime.accessTimeId),
                         avatarUrl: null,
                         votePoint: Number(totalPoint),
                         voteParticipantCount: Number(participantCount),
@@ -148,7 +159,7 @@ export class PortalService {
                 break;
         }
 
-        const projectIds = projects.map((project) => project.id);
+        const projectIds = projects.map((project) => project.accessTimeId);
 
         const projectDocuments = await this.projectModel
             .find({ chainId })
@@ -170,9 +181,11 @@ export class PortalService {
 
         projects = projects.map((project) => ({
             ...project,
-            avatarUrl: projectDocuments.find((pd) => pd.id == project.id)?.avatarUrl ?? null,
-            categories: projectDocuments.find((pd) => pd.id == project.id)?.categories ?? [],
-            isFavorited: userFavorites.find((uf) => uf.id == uf.id) ? true : false
+            avatarUrl:
+                projectDocuments.find((pd) => pd.id == project.accessTimeId)?.avatarUrl ?? null,
+            categories:
+                projectDocuments.find((pd) => pd.id == project.accessTimeId)?.categories ?? [],
+            isFavorited: userFavorites.find((uf) => uf.id == project.accessTimeId) ? true : false
         }));
 
         return { countProjects, maxPage: Math.floor(countProjects / limit), projects };
@@ -183,19 +196,18 @@ export class PortalService {
         user: Address,
         page?: number
     ): Promise<UserFavoritesResponseDto> {
-        const queryPage = page ?? 0;
+        const queryPage = page ?? 1;
         const limit = Number(process.env.PAGE_ITEM_LIMIT);
-        const skip = page ? page * limit : 0;
+        const skip = page ? (page - 1) * limit : 0;
 
         const countUserFavorites = await this.projectFavoriteModel.countDocuments({
             chainId,
             user
         });
 
-        const requestable =
-            limit - ((queryPage + 1) * limit - countUserFavorites) > 0 ? true : false;
+        const requestable = limit - (queryPage * limit - countUserFavorites) > 0 ? true : false;
 
-        if (countUserFavorites > 0 && !requestable) {
+        if (queryPage != 1 && !requestable) {
             throw new HttpException(
                 {
                     errors: { message: "Requested page exceeds page limit." }

@@ -107,6 +107,7 @@ export const CountProjectsDocument = gql`
 
 export interface NewestProjectsResponse {
     id: Address;
+    accessTimeId: string;
     totalVotePoint: string;
     totalVoteParticipantCount: string;
 }
@@ -121,6 +122,7 @@ export const NewestProjectsDocument = gql`
             where: { paymentMethods_contains: $paymentMethods }
         ) {
             id
+            accessTimeId
             totalVotePoint
             totalVoteParticipantCount
         }
@@ -139,6 +141,7 @@ export const TopRatedProjectsDocument = gql`
             where: { paymentMethods_contains: $paymentMethods }
         ) {
             id
+            accessTimeId
             totalVotePoint
             totalVoteParticipantCount
         }
@@ -148,6 +151,7 @@ export const TopRatedProjectsDocument = gql`
 export type WeeklyPopularProjectsResponse = {
     accessTime: {
         id: Address;
+        accessTimeId: string;
     };
     participantCount: string;
     totalPoint: string;
@@ -174,6 +178,7 @@ export const WeeklyPopularProjectsDocument = gql`
         ) {
             accessTime {
                 id
+                accessTimeId
             }
             participantCount
             votePoint

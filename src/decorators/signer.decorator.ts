@@ -3,7 +3,7 @@ import { Address, Hash } from "viem";
 
 import { signatureCheck } from "../helpers/signature-check";
 
-export const Signer = createParamDecorator((data: boolean, ctx: ExecutionContext) => {
+export const Signer = createParamDecorator(async (data: boolean, ctx: ExecutionContext) => {
     const request = ctx.switchToHttp().getRequest();
     let signer: Address | undefined = request.signer as Address;
 
@@ -12,19 +12,20 @@ export const Signer = createParamDecorator((data: boolean, ctx: ExecutionContext
         const signature = request.get("X-ACCESSTIME-AUTH-SIGNATURE");
 
         if (message && signature) {
-            signatureCheck(message as Hash, signature as Hash, false).then((verifyResult) => {
-                if (verifyResult[0] == true) {
-                    signer = verifyResult[1];
+            const [verifyResult, verifiedAddress] = await signatureCheck(
+                message as Hash,
+                signature as Hash,
+                false
+            );
 
-                    return signer;
-                } else {
-                    return undefined;
-                }
-            });
+            if (verifyResult == true) {
+                signer = verifiedAddress;
+            } else {
+                return undefined;
+            }
         } else {
             return undefined;
         }
-    } else {
-        return signer;
     }
+    return signer.toLowerCase() as Address;
 });
