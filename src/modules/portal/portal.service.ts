@@ -195,7 +195,7 @@ export class PortalService {
         const requestable =
             limit - ((queryPage + 1) * limit - countUserFavorites) > 0 ? true : false;
 
-        if (!requestable) {
+        if (countUserFavorites > 0 && !requestable) {
             throw new HttpException(
                 {
                     errors: { message: "Requested page exceeds page limit." }
