@@ -183,9 +183,12 @@ export class SubgraphService {
         }
     }
 
-    async countProjects(chainId: number): Promise<number> {
+    async countProjects(chainId: number, paymentMethods?: Address[]): Promise<number> {
         try {
-            const result = await this.getClient(chainId).request(CountProjectsDocument);
+            paymentMethods ??= [];
+            const result = await this.getClient(chainId).request(CountProjectsDocument, {
+                paymentMethods
+            });
             const { accessTimes } = result as { accessTimes: CountProjectsResponse[] };
 
             return accessTimes == null
@@ -284,8 +287,14 @@ export class SubgraphService {
         }
     }
 
-    async countWeeklyVoteProjects(chainId: number, epochWeek: number): Promise<number> {
+    async countWeeklyVoteProjects(
+        chainId: number,
+        epochWeek: number,
+        paymentMethods?: Address[]
+    ): Promise<number> {
         try {
+            paymentMethods ??= [];
+            // to-do: CountWeeklyVoteProjectsDocument need to be filtered with paymentMethods
             const result = await this.getClient(chainId).request(CountWeeklyVoteProjectsDocument, {
                 epochWeek: epochWeek.toString()
             });

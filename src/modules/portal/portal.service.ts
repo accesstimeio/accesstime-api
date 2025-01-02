@@ -8,7 +8,14 @@ import { getEpochWeek } from "src/helpers";
 
 import { Project } from "./schemas/project.schema";
 import { ProjectFavorite } from "./schemas/project-favorite.schema";
-import { ExploreResponseDto, ProjectCardDto, ProjectDto, UserFavoritesResponseDto } from "./dto";
+import {
+    ExploreResponseDto,
+    ProjectCardDto,
+    ProjectDto,
+    ProjectToggleFavoriteResponseDto,
+    ProjectVotesResponseDto,
+    UserFavoritesResponseDto
+} from "./dto";
 
 import { SubgraphService } from "../subgraph/subgraph.service";
 
@@ -76,11 +83,12 @@ export class PortalService {
         let projects: CacheProject[] = [];
 
         if (querySort != "weekly_popular") {
-            countProjects = await this.subgraphService.countProjects(chainId);
+            countProjects = await this.subgraphService.countProjects(chainId, paymentMethods);
         } else {
             countProjects = await this.subgraphService.countWeeklyVoteProjects(
                 chainId,
-                getEpochWeek()
+                getEpochWeek(),
+                paymentMethods
             );
         }
         const requestable = limit - (queryPage * limit - countProjects) > 0 ? true : false;
@@ -249,20 +257,11 @@ export class PortalService {
     }
 
     async getProjectById(chainId: number, id: number, user?: Address): Promise<ProjectDto> {
-        const projectFromChain = await this.subgraphService.projectById(chainId, id);
+        const projectFromChain = await this.getProjectFromChain(chainId, id);
 
-        if (projectFromChain.length == 0) {
-            throw new HttpException(
-                {
-                    errors: { message: "Requested project is not found." }
-                },
-                HttpStatus.EXPECTATION_FAILED
-            );
-        }
-
-        const projectLastUpdate = Number(projectFromChain[0].updateTimestamp);
-        const projectAddress = projectFromChain[0].id;
-        const projectPaymentMethods = projectFromChain[0].paymentMethods;
+        const projectLastUpdate = Number(projectFromChain.updateTimestamp);
+        const projectAddress = projectFromChain.id;
+        const projectPaymentMethods = projectFromChain.paymentMethods;
         const projectDocument = await this.projectModel.countDocuments({ id, chainId });
 
         let project: (Document<unknown, unknown, Project> & Project) | null = null;
@@ -320,7 +319,11 @@ export class PortalService {
         };
     }
 
-    async toggleFavorite(chainId: number, id: number, user: Address) {
+    async toggleFavorite(
+        chainId: number,
+        id: number,
+        user: Address
+    ): Promise<ProjectToggleFavoriteResponseDto> {
         const isFavorited = await this.isProjectFavoritedByUser(chainId, id, user);
 
         let isFavoritedNow: boolean | null = null;
@@ -351,6 +354,41 @@ export class PortalService {
         return { isFavoritedNow };
     }
 
+    async getProjectVotes(chainId: number, id: number): Promise<ProjectVotesResponseDto> {
+        const projectFromChain = await this.getProjectFromChain(chainId, id);
+        const projectAddress = projectFromChain.id;
+
+        const projectPreviousWeeklyVote = await this.subgraphService.projectWeeklyVote(
+            chainId,
+            getEpochWeek() - 1,
+            projectAddress
+        );
+        const previousVotePoint =
+            projectPreviousWeeklyVote.length > 0
+                ? Number(projectPreviousWeeklyVote[0].votePoint)
+                : 0;
+        const previousVoteParticipantCount =
+            projectPreviousWeeklyVote.length > 0
+                ? Number(projectPreviousWeeklyVote[0].participantCount)
+                : 0;
+
+        const projectWeeklyVote = await this.subgraphService.projectWeeklyVote(
+            chainId,
+            getEpochWeek(),
+            projectAddress
+        );
+        const votePoint = projectWeeklyVote.length > 0 ? Number(projectWeeklyVote[0].votePoint) : 0;
+        const voteParticipantCount =
+            projectWeeklyVote.length > 0 ? Number(projectWeeklyVote[0].participantCount) : 0;
+
+        return {
+            previousVotePoint,
+            previousVoteParticipantCount,
+            votePoint,
+            voteParticipantCount
+        };
+    }
+
     private async isProjectFavoritedByUser(
         chainId: number,
         id: number,
@@ -363,5 +401,20 @@ export class PortalService {
         });
 
         return userFavorite > 0 ? true : false;
+    }
+
+    private async getProjectFromChain(chainId: number, id: number) {
+        const projectFromChain = await this.subgraphService.projectById(chainId, id);
+
+        if (projectFromChain.length == 0) {
+            throw new HttpException(
+                {
+                    errors: { message: "Requested project is not found." }
+                },
+                HttpStatus.EXPECTATION_FAILED
+            );
+        }
+
+        return projectFromChain[0];
     }
 }

@@ -6,7 +6,13 @@ import { SUPPORTED_SORT_TYPE } from "@accesstimeio/accesstime-common";
 import { Signer } from "src/decorators/signer.decorator";
 
 import { PortalService } from "./portal.service";
-import { ExploreResponseDto } from "./dto";
+import {
+    ExploreResponseDto,
+    ProjectDto,
+    ProjectToggleFavoriteResponseDto,
+    ProjectVotesResponseDto,
+    UserFavoritesResponseDto
+} from "./dto";
 
 @UsePipes(new ValidationPipe({ transform: true }))
 @Controller()
@@ -54,6 +60,9 @@ export class PortalController {
         type: Number,
         required: false
     })
+    @ApiResponse({
+        type: UserFavoritesResponseDto
+    })
     @Get("/favorites/:chainId")
     getFavorites(
         @Param("chainId") chainId: number,
@@ -63,6 +72,9 @@ export class PortalController {
         return this.portalService.getFavorites(chainId, signer, page);
     }
 
+    @ApiResponse({
+        type: ProjectDto
+    })
     @Get("/project/:chainId/:id")
     async getProjectById(
         @Param("chainId") chainId: number,
@@ -72,6 +84,9 @@ export class PortalController {
         return this.portalService.getProjectById(chainId, id, signer);
     }
 
+    @ApiResponse({
+        type: ProjectToggleFavoriteResponseDto
+    })
     @Post("/project/:chainId/:id/toggle-favorite")
     toggleFavorite(
         @Param("chainId") chainId: number,
@@ -79,5 +94,13 @@ export class PortalController {
         @Signer(true) signer: Address
     ): Promise<{ isFavoritedNow: boolean | null }> {
         return this.portalService.toggleFavorite(chainId, id, signer);
+    }
+
+    @ApiResponse({
+        type: ProjectVotesResponseDto
+    })
+    @Get("/project/:chainId/:id/votes")
+    async getProjectVotes(@Param("chainId") chainId: number, @Param("id") id: number) {
+        return this.portalService.getProjectVotes(chainId, id);
     }
 }

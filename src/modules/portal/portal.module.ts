@@ -33,7 +33,8 @@ export class PortalModule implements NestModule {
             .exclude(
                 { path: "portal/featureds", method: RequestMethod.GET },
                 { path: "portal/explore/:chainId", method: RequestMethod.GET },
-                { path: "portal/project/:chainId/:id", method: RequestMethod.GET }
+                { path: "portal/project/:chainId/:id", method: RequestMethod.GET },
+                { path: "portal/project/:chainId/:id/votes", method: RequestMethod.GET }
             )
             .forRoutes(PortalController);
     }

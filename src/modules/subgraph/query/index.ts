@@ -98,8 +98,13 @@ export type CountProjectsResponse = {
 };
 
 export const CountProjectsDocument = gql`
-    query CountProjects {
-        accessTimes(orderDirection: desc, orderBy: accessTimeId, first: 1) {
+    query CountProjects($paymentMethods: [Bytes!]) {
+        accessTimes(
+            orderDirection: desc
+            orderBy: accessTimeId
+            first: 1
+            where: { paymentMethods_contains: $paymentMethods }
+        ) {
             accessTimeId
         }
     }
