@@ -1,6 +1,6 @@
 import { HttpException, HttpStatus, Injectable, NestMiddleware } from "@nestjs/common";
 import { Request, Response, NextFunction } from "express";
-import { Chain } from "@accesstimeio/accesstime-common";
+import { Chain, SUPPORTED_CHAIN } from "@accesstimeio/accesstime-common";
 
 @Injectable()
 export default class ChainIdCheckMiddleware implements NestMiddleware {
@@ -14,7 +14,10 @@ export default class ChainIdCheckMiddleware implements NestMiddleware {
                 HttpStatus.BAD_REQUEST
             );
         } else {
-            if (isNaN(Number(foundChainId)) || !Chain.ids.includes(Number(foundChainId))) {
+            if (
+                isNaN(Number(foundChainId)) ||
+                !Chain.ids.includes(Number(foundChainId) as SUPPORTED_CHAIN)
+            ) {
                 throw new HttpException(
                     {
                         errors: { message: "Requested chainId is not supported." }

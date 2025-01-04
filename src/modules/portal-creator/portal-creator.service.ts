@@ -2,7 +2,7 @@ import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Document, Model } from "mongoose";
 import { Address, Hash, zeroHash } from "viem";
-import { Portal } from "@accesstimeio/accesstime-common";
+import { Portal, PortalSocialType } from "@accesstimeio/accesstime-common";
 
 import { generateFilename } from "src/helpers";
 
@@ -56,10 +56,18 @@ export class PortalCreatorService {
         const { project } = await this.getProject(chainId, id, signer);
 
         let foundUnsupportedSocialType: boolean = false;
+        let foundUnsupportedSocialUrl: boolean = false;
         for (let i = 0; i < data.payload.length; i++) {
-            const { type } = data.payload[i];
-            if (isNaN(Number(type)) || !Portal.socialTypes.includes(Number(type))) {
+            const { type, url } = data.payload[i];
+            if (
+                isNaN(Number(type)) ||
+                Number(type) == PortalSocialType.None ||
+                !Portal.socialTypes.includes(Number(type))
+            ) {
                 foundUnsupportedSocialType = true;
+            }
+            if (!Portal.socialUrlVerify(type, url, false)) {
+                foundUnsupportedSocialUrl = true;
             }
         }
 
@@ -70,14 +78,6 @@ export class PortalCreatorService {
                 },
                 HttpStatus.BAD_REQUEST
             );
-        }
-
-        let foundUnsupportedSocialUrl: boolean = false;
-        for (let i = 0; i < data.payload.length; i++) {
-            const { type, url } = data.payload[i];
-            if (!Portal.socialUrlVerify(type, url)) {
-                foundUnsupportedSocialUrl = true;
-            }
         }
 
         if (foundUnsupportedSocialUrl) {
