@@ -162,6 +162,7 @@ export class PortalCreatorService {
         let foundInvalidPackage: boolean = false;
         for (let i = 0; i < data.payload.length; i++) {
             const { id } = data.payload[i];
+            // to-do: check title with regex
             if (!projectFromChain[0].packages.includes(id.toString())) {
                 foundInvalidPackage = true;
             }
@@ -176,31 +177,34 @@ export class PortalCreatorService {
             );
         }
 
-        const newPackages = project.packages.map((_package) => {
-            const payloadPackage = data.payload.find(
-                (_payloadPackage) => _payloadPackage.id == _package.id
-            );
+        const updatedPackages = project.packages
+            .map((_package) => {
+                const payloadPackage = data.payload.find(
+                    (_payloadPackage) => _payloadPackage.id == _package.id
+                );
 
-            if (!payloadPackage) {
-                return {
-                    ..._package,
-                    title: payloadPackage.title
-                };
-            }
-
-            return _package;
-        });
+                if (payloadPackage) {
+                    return {
+                        ..._package,
+                        title: payloadPackage.title
+                    };
+                } else {
+                    return null;
+                }
+            })
+            .filter((_package) => _package != null);
+        // to-do: remove deleted packages background and content from MinIO
 
         for (let i = 0; i < data.payload.length; i++) {
             const { id, title } = data.payload[i];
             const isExist = project.packages.find((_package) => _package.id == id);
 
             if (!isExist) {
-                newPackages.push({ id, title, backgroundUrl: null, contentUrl: null });
+                updatedPackages.push({ id, title, backgroundUrl: null, contentUrl: null });
             }
         }
 
-        project.$set({ packages: newPackages });
+        project.$set({ packages: updatedPackages });
 
         await project.save();
 
