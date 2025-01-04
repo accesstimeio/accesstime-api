@@ -159,7 +159,7 @@ export type WeeklyPopularProjectsResponse = {
         accessTimeId: string;
     };
     participantCount: string;
-    totalPoint: string;
+    votePoint: string;
 };
 
 export const WeeklyPopularProjectsDocument = gql`

@@ -153,12 +153,12 @@ export class PortalService {
                     paymentMethods
                 );
 
-                weeklyPopularProjects.forEach(({ accessTime, totalPoint, participantCount }) => {
+                weeklyPopularProjects.forEach(({ accessTime, votePoint, participantCount }) => {
                     projects.push({
                         id: accessTime.id,
                         accessTimeId: Number(accessTime.accessTimeId),
                         avatarUrl: null,
-                        votePoint: Number(totalPoint),
+                        votePoint: Number(votePoint),
                         voteParticipantCount: Number(participantCount),
                         isFavorited: false,
                         categories: []
