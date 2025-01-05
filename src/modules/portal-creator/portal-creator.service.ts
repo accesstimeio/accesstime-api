@@ -162,9 +162,11 @@ export class PortalCreatorService {
 
         let foundInvalidPackage: boolean = false;
         for (let i = 0; i < data.payload.length; i++) {
-            const { id } = data.payload[i];
-            // to-do: check title with regex
-            if (!projectFromChain[0].packages.includes(id.toString())) {
+            const { id, title } = data.payload[i];
+            if (
+                !projectFromChain[0].packages.includes(id.toString()) ||
+                !Portal.packageNameVerify(title)
+            ) {
                 foundInvalidPackage = true;
             }
         }
