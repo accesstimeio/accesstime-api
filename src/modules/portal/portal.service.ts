@@ -173,7 +173,7 @@ export class PortalService {
             .find({ chainId })
             .where("id")
             .in(projectIds)
-            .select(["id", "avatar", "categories"])
+            .select(["id", "avatarUrl", "categories"])
             .exec();
 
         let userFavorites: ProjectFavorite[] = [];
@@ -237,7 +237,7 @@ export class PortalService {
             .find()
             .where("id")
             .in(userFavoritedProjectIds)
-            .select(["address", "avatar", "categories"])
+            .select(["address", "avatarUrl", "categories"])
             .exec();
 
         const projects: ProjectCardDto[] = userFavoriteProjectDocuments.map((project) => ({
@@ -266,7 +266,7 @@ export class PortalService {
 
         let project: (Document<unknown, unknown, Project> & Project) | null = null;
         let requiredSave: boolean = false;
-        if (!projectDocument) {
+        if (projectDocument == 0) {
             project = new this.projectModel({
                 id,
                 chainId,

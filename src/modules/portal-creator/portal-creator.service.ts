@@ -15,6 +15,7 @@ import {
 import { Project } from "../portal/schemas/project.schema";
 import { SubgraphService } from "../subgraph/subgraph.service";
 import { MinioService } from "../minio/minio.service";
+import { ProjectPackage } from "../portal/schemas/project-package.schema";
 
 @Injectable()
 export class PortalCreatorService {
@@ -177,6 +178,7 @@ export class PortalCreatorService {
             );
         }
 
+        const removedPackageIds: number[] = [];
         const updatedPackages = project.packages
             .map((_package) => {
                 const payloadPackage = data.payload.find(
@@ -189,11 +191,25 @@ export class PortalCreatorService {
                         title: payloadPackage.title
                     };
                 } else {
+                    removedPackageIds.push(_package.id);
                     return null;
                 }
             })
             .filter((_package) => _package != null);
-        // to-do: remove deleted packages background and content from MinIO
+
+        for (let i = 0; i < removedPackageIds.length; i++) {
+            const removedPackageId = removedPackageIds[i];
+            const _package = project.packages.find((_package) => _package.id == removedPackageId);
+            if (_package.backgroundUrl != null) {
+                await this.minioService.deleteFile(
+                    "project-package-background",
+                    _package.backgroundUrl
+                );
+            }
+            if (_package.contentUrl != null) {
+                await this.minioService.deleteFile("project-package-content", _package.contentUrl);
+            }
+        }
 
         for (let i = 0; i < data.payload.length; i++) {
             const { id, title } = data.payload[i];
@@ -231,7 +247,10 @@ export class PortalCreatorService {
 
         let newFileName: Hash = zeroHash;
 
-        const newPackages = project.packages.map(async (_package) => {
+        const newPackages: ProjectPackage[] = [];
+
+        for (let i = 0; i < project.packages.length; i++) {
+            const _package = project.packages[i];
             if (_package.id == packageId) {
                 if (_package.backgroundUrl != null) {
                     await this.minioService.deleteFile(
@@ -239,18 +258,17 @@ export class PortalCreatorService {
                         _package.backgroundUrl
                     );
                 }
-
                 newFileName = generateFilename("project-package-background", signer);
                 await this.minioService.uploadFile("project-package-background", newFileName, file);
 
-                return {
+                newPackages.push({
                     ..._package,
                     backgroundUrl: newFileName
-                };
+                });
+            } else {
+                newPackages.push(_package);
             }
-
-            return _package;
-        });
+        }
 
         project.$set({ packages: newPackages });
 
@@ -279,7 +297,10 @@ export class PortalCreatorService {
 
         let newFileName: Hash = zeroHash;
 
-        const newPackages = project.packages.map(async (_package) => {
+        const newPackages: ProjectPackage[] = [];
+
+        for (let i = 0; i < project.packages.length; i++) {
+            const _package = project.packages[i];
             if (_package.id == packageId) {
                 if (_package.contentUrl != null) {
                     await this.minioService.deleteFile(
@@ -291,14 +312,14 @@ export class PortalCreatorService {
                 newFileName = generateFilename("project-package-content", signer);
                 await this.minioService.uploadFile("project-package-content", newFileName, file);
 
-                return {
+                newPackages.push({
                     ..._package,
                     contentUrl: newFileName
-                };
+                });
+            } else {
+                newPackages.push(_package);
             }
-
-            return _package;
-        });
+        }
 
         project.$set({ packages: newPackages });
 
@@ -334,7 +355,7 @@ export class PortalCreatorService {
         const projectDocument = await this.projectModel.countDocuments({ id, chainId });
 
         let project: (Document<unknown, unknown, Project> & Project) | null = null;
-        if (!projectDocument) {
+        if (projectDocument == 0) {
             project = new this.projectModel({
                 id,
                 chainId,
