@@ -1,8 +1,10 @@
 import { HttpException, HttpStatus, Inject, Injectable, forwardRef } from "@nestjs/common";
-import { Address, isAddress } from "src/helpers";
-import { SubgraphService } from "../subgraph/subgraph.service";
-import { LastDeploymentResponseDto, ListDeploymentResponseDto, RatesDto } from "./dto";
 import { CACHE_MANAGER, Cache } from "@nestjs/cache-manager";
+import { Address, isAddress } from "viem";
+
+import { LastDeploymentResponseDto, ListDeploymentResponseDto, RatesDto } from "./dto";
+
+import { SubgraphService } from "../subgraph/subgraph.service";
 
 @Injectable()
 export class DeploymentService {
@@ -12,7 +14,7 @@ export class DeploymentService {
         private readonly subgraphService: SubgraphService
     ) {}
 
-    async lastDeployments(address: Address): Promise<LastDeploymentResponseDto[]> {
+    async lastDeployments(chainId: number, address: Address): Promise<LastDeploymentResponseDto[]> {
         const validAddress = isAddress(address);
 
         if (!validAddress) {
@@ -24,14 +26,14 @@ export class DeploymentService {
             );
         }
 
-        const dataKey = `${address.toLowerCase()}-deployments-last`;
+        const dataKey = `${chainId}-${address.toLowerCase()}-deployments-last`;
 
         const cachedData = await this.cacheService.get<LastDeploymentResponseDto[]>(dataKey);
 
         if (cachedData) {
             return cachedData;
         } else {
-            const lastDeployments = await this.subgraphService.lastDeployments(address);
+            const lastDeployments = await this.subgraphService.lastDeployments(chainId, address);
 
             await this.cacheService.set(dataKey, lastDeployments, {
                 ttl: Number(process.env.LAST_DEPLOYMENTS_TTL)
@@ -41,12 +43,16 @@ export class DeploymentService {
         }
     }
 
-    async removeLastDeployments(address: Address) {
-        const dataKey = `${address.toLowerCase()}-deployments-last`;
+    async removeLastDeployments(chainId: number, address: Address) {
+        const dataKey = `${chainId}-${address.toLowerCase()}-deployments-last`;
         await this.cacheService.del(dataKey);
     }
 
-    async listDeployments(address: Address, page?: number): Promise<ListDeploymentResponseDto> {
+    async listDeployments(
+        chainId: number,
+        address: Address,
+        page?: number
+    ): Promise<ListDeploymentResponseDto> {
         const validAddress = isAddress(address);
         const requestedPage = page ? Number(page) : 0;
 
@@ -60,9 +66,9 @@ export class DeploymentService {
         }
 
         const deploymentCount = Number(
-            (await this.subgraphService.countDeployments(address)).deploymentCount
+            (await this.subgraphService.countDeployments(chainId, address)).deploymentCount
         );
-        const limit = Number(process.env.LIST_DEPLOYMENTS_LIMIT);
+        const limit = Number(process.env.PAGE_ITEM_LIMIT);
         const requestable =
             limit - ((requestedPage + 1) * limit - deploymentCount) > 0 ? true : false;
 
@@ -82,7 +88,7 @@ export class DeploymentService {
             );
         }
 
-        const dataKey = `${address.toLowerCase()}-deployments-page-${requestedPage}`;
+        const dataKey = `${chainId}-${address.toLowerCase()}-deployments-page-${requestedPage}`;
 
         const cachedData = await this.cacheService.get<ListDeploymentResponseDto>(dataKey);
 
@@ -90,6 +96,7 @@ export class DeploymentService {
             return cachedData;
         } else {
             const listDeployments = await this.subgraphService.listDeployments(
+                chainId,
                 address,
                 requestedPage
             );
@@ -108,28 +115,28 @@ export class DeploymentService {
         }
     }
 
-    async removeListDeployments(address: Address) {
+    async removeListDeployments(chainId: number, address: Address) {
         const deploymentCount = Number(
-            (await this.subgraphService.countDeployments(address)).deploymentCount
+            (await this.subgraphService.countDeployments(chainId, address)).deploymentCount
         );
-        const limit = Number(process.env.LIST_DEPLOYMENTS_LIMIT);
+        const limit = Number(process.env.PAGE_ITEM_LIMIT);
         const maxPage = Math.floor(deploymentCount / limit);
 
         for (let i = 0; i < maxPage + 1; i++) {
-            const dataKey = `${address.toLowerCase()}-deployments-page-${i}`;
+            const dataKey = `${chainId}-${address.toLowerCase()}-deployments-page-${i}`;
             await this.cacheService.del(dataKey);
         }
     }
 
-    async rates(): Promise<RatesDto[]> {
-        const dataKey = `factory-rates`;
+    async rates(chainId: number): Promise<RatesDto[]> {
+        const dataKey = `${chainId}-factory-rates`;
 
         const cachedData = await this.cacheService.get<RatesDto[]>(dataKey);
 
         if (cachedData) {
             return cachedData;
         } else {
-            const rates = await this.subgraphService.rates();
+            const rates = await this.subgraphService.rates(chainId);
 
             await this.cacheService.set(dataKey, rates, {
                 ttl: Number(process.env.RATES_TTL)

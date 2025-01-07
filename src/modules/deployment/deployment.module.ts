@@ -1,9 +1,13 @@
-import { Module, forwardRef } from "@nestjs/common";
-import { DeploymentController } from "./deployment.controller";
-import { DeploymentService } from "./deployment.service";
-import { SubgraphModule } from "../subgraph/subgraph.module";
+import { MiddlewareConsumer, Module, NestModule, forwardRef } from "@nestjs/common";
 import { CacheModule } from "@nestjs/cache-manager";
 import * as redisStore from "cache-manager-redis-store";
+
+import ChainIdCheckMiddleware from "src/common/middlewares/chain-id-check.middleware";
+
+import { DeploymentController } from "./deployment.controller";
+import { DeploymentService } from "./deployment.service";
+
+import { SubgraphModule } from "../subgraph/subgraph.module";
 
 @Module({
     imports: [
@@ -21,4 +25,8 @@ import * as redisStore from "cache-manager-redis-store";
     providers: [DeploymentService],
     exports: [DeploymentService]
 })
-export class DeploymentModule {}
+export class DeploymentModule implements NestModule {
+    configure(consumer: MiddlewareConsumer) {
+        consumer.apply(ChainIdCheckMiddleware).forRoutes(DeploymentController);
+    }
+}

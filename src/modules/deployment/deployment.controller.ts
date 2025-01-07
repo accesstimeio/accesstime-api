@@ -1,11 +1,12 @@
 import { Controller, Get, Param, Query, UsePipes, ValidationPipe } from "@nestjs/common";
-import { DeploymentService } from "./deployment.service";
 import { ApiQuery, ApiResponse } from "@nestjs/swagger";
-import { Address } from "src/helpers";
-import { LastDeploymentResponseDto, ListDeploymentResponseDto, RatesDto } from "./dto";
+import { Address } from "viem";
 
-@UsePipes(new ValidationPipe())
-@Controller("deployment")
+import { LastDeploymentResponseDto, ListDeploymentResponseDto, RatesDto } from "./dto";
+import { DeploymentService } from "./deployment.service";
+
+@UsePipes(new ValidationPipe({ transform: true }))
+@Controller()
 export class DeploymentController {
     constructor(private readonly deploymentService: DeploymentService) {}
 
@@ -13,9 +14,9 @@ export class DeploymentController {
         type: LastDeploymentResponseDto,
         isArray: true
     })
-    @Get("/last/:address")
-    lastDeployments(@Param("address") address: Address) {
-        return this.deploymentService.lastDeployments(address);
+    @Get("/last/:chainId/:address")
+    lastDeployments(@Param("chainId") chainId: number, @Param("address") address: Address) {
+        return this.deploymentService.lastDeployments(chainId, address);
     }
 
     @ApiQuery({
@@ -26,17 +27,21 @@ export class DeploymentController {
     @ApiResponse({
         type: ListDeploymentResponseDto
     })
-    @Get("/list/:address")
-    listDeployments(@Param("address") address: Address, @Query("page") page?: number) {
-        return this.deploymentService.listDeployments(address, page);
+    @Get("/list/:chainId/:address")
+    listDeployments(
+        @Param("chainId") chainId: number,
+        @Param("address") address: Address,
+        @Query("page") page?: number
+    ) {
+        return this.deploymentService.listDeployments(chainId, address, page);
     }
 
     @ApiResponse({
         type: RatesDto,
         isArray: true
     })
-    @Get("/rates")
-    rates() {
-        return this.deploymentService.rates();
+    @Get("/:chainId/rates")
+    rates(@Param("chainId") chainId: number) {
+        return this.deploymentService.rates(chainId);
     }
 }

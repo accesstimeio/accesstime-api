@@ -1,17 +1,25 @@
 {
   "name": "accesstime-api",
-  "version": "0.0.1",
-  "description": "",
-  "author": "",
-  "private": true,
-  "license": "UNLICENSED",
+  "license": "MIT",
+  "version": "1.0.1",
+  "description": "API of AccessTime Apps",
+  "author": {
+    "name": "AccessTime",
+    "url": "https://github.com/accesstimeio"
+  },
+  "repository": "https://github.com/accesstimeio/accesstime-api",
+  "keywords": [
+    "accesstime",
+    "api",
+    "nestjs"
+  ],
   "scripts": {
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "export NODE_ENV=development && nest start",
     "start:dev": "export NODE_ENV=development && nest start --watch",
     "start:debug": "export NODE_ENV=development && nest start --debug --watch",
-    "start:prod": "export NODE_ENV=production && node dist/src/main",
+    "start:prod": "export NODE_ENV=production && node dist/main",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -20,10 +28,12 @@
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
+    "@accesstimeio/accesstime-common": "^1.1.8",
     "@nestjs/cache-manager": "^2.2.2",
     "@nestjs/common": "^10.0.0",
     "@nestjs/config": "^3.2.2",
     "@nestjs/core": "^10.0.0",
+    "@nestjs/mongoose": "^10.1.0",
     "@nestjs/platform-express": "^10.0.0",
     "@nestjs/schedule": "^4.1.1",
     "@nestjs/swagger": "^7.3.1",
@@ -31,11 +41,17 @@
     "cache-manager-redis-store": "^2.0.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
+    "file-type": "^19.6.0",
     "graphql-request": "^6.1.0",
+    "istextorbinary": "^9.5.0",
     "joi": "^17.13.1",
+    "markdownlint": "^0.37.1",
+    "mongoose": "^8.9.0",
+    "nestjs-minio": "^2.6.2",
     "redis": "^3.1.2",
     "reflect-metadata": "^0.2.0",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "viem": "^2.21.55"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",
@@ -44,6 +60,7 @@
     "@types/cache-manager-redis-store": "^2.0.4",
     "@types/express": "^4.17.17",
     "@types/jest": "^29.5.2",
+    "@types/multer": "^1.4.12",
     "@types/node": "^20.3.1",
     "@types/redis": "^2.8.32",
     "@types/supertest": "^6.0.0",

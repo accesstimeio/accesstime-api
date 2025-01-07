@@ -2,12 +2,12 @@ import { ApiProperty } from "@nestjs/swagger";
 import { Expose, Type } from "class-transformer";
 import { ValidateNested } from "class-validator";
 
-import { DeploymentDto } from "./deployment.dto";
+import { ProjectCardDto } from "./project.dto";
 
-export class ListDeploymentResponseDto {
+export class ExploreResponseDto {
     @Expose()
     @ApiProperty()
-    page: number;
+    countProjects: number;
 
     @Expose()
     @ApiProperty()
@@ -15,10 +15,10 @@ export class ListDeploymentResponseDto {
 
     @Expose()
     @ApiProperty({
-        type: DeploymentDto,
+        type: ProjectCardDto,
         isArray: true
     })
     @ValidateNested({ each: true })
-    @Type(() => DeploymentDto)
-    deployments: DeploymentDto[];
+    @Type(() => ProjectCardDto)
+    projects: ProjectCardDto[];
 }

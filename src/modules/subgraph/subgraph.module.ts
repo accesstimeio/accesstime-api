@@ -1,7 +1,9 @@
 import { Module, forwardRef } from "@nestjs/common";
-import { SubgraphService } from "./subgraph.service";
 import { CacheModule } from "@nestjs/cache-manager";
 import * as redisStore from "cache-manager-redis-store";
+
+import { SubgraphService } from "./subgraph.service";
+
 import { DeploymentModule } from "../deployment/deployment.module";
 import { ProjectModule } from "../project/project.module";
 

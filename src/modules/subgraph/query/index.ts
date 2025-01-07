@@ -1,14 +1,5 @@
 import { gql } from "graphql-request";
-import { Address } from "src/helpers";
-
-export type SyncResponse = {
-    accessTimeId: string;
-    id: Address;
-    owner: Address;
-    prevOwner: Address;
-    nextOwner: Address;
-    updateTimestamp: string;
-};
+import { Address } from "viem";
 
 export type CountDeploymentsResponse = {
     deploymentCount: string;
@@ -66,9 +57,19 @@ export const ProjectByIdDocument = gql`
             paused
             paymentMethods
             prevOwner
+            updateTimestamp
         }
     }
 `;
+
+export type SyncResponse = {
+    accessTimeId: string;
+    id: Address;
+    owner: Address;
+    prevOwner: Address;
+    nextOwner: Address;
+    updateTimestamp: string;
+};
 
 export const SyncDocument = gql`
     query Sync {
@@ -88,6 +89,132 @@ export const RatesDocument = gql`
         factoryRates {
             id
             rate
+        }
+    }
+`;
+
+export type CountProjectsResponse = {
+    accessTimeId: string;
+};
+
+export const CountProjectsDocument = gql`
+    query CountProjects($paymentMethods: [Bytes!]) {
+        accessTimes(
+            orderDirection: desc
+            orderBy: accessTimeId
+            first: 1
+            where: { paymentMethods_contains: $paymentMethods }
+        ) {
+            accessTimeId
+        }
+    }
+`;
+
+export interface NewestProjectsResponse {
+    id: Address;
+    accessTimeId: string;
+    totalVotePoint: string;
+    totalVoteParticipantCount: string;
+}
+
+export const NewestProjectsDocument = gql`
+    query NewestProjects($limit: Int!, $skip: Int!, $paymentMethods: [Bytes!]) {
+        accessTimes(
+            orderDirection: desc
+            orderBy: accessTimeId
+            first: $limit
+            skip: $skip
+            where: { paymentMethods_contains: $paymentMethods }
+        ) {
+            id
+            accessTimeId
+            totalVotePoint
+            totalVoteParticipantCount
+        }
+    }
+`;
+
+export interface TopRatedProjectsResponse extends NewestProjectsResponse {}
+
+export const TopRatedProjectsDocument = gql`
+    query TopRatedProjects($limit: Int!, $skip: Int!, $paymentMethods: [Bytes!]) {
+        accessTimes(
+            orderDirection: desc
+            orderBy: totalVotePoint
+            first: $limit
+            skip: $skip
+            where: { paymentMethods_contains: $paymentMethods }
+        ) {
+            id
+            accessTimeId
+            totalVotePoint
+            totalVoteParticipantCount
+        }
+    }
+`;
+
+export type WeeklyPopularProjectsResponse = {
+    accessTime: {
+        id: Address;
+        accessTimeId: string;
+    };
+    participantCount: string;
+    votePoint: string;
+};
+
+export const WeeklyPopularProjectsDocument = gql`
+    query WeeklyPopularProjects(
+        $epochWeek: BigInt!
+        $limit: Int!
+        $skip: Int!
+        $paymentMethods: [Bytes!]
+    ) {
+        accessVotes(
+            orderDirection: desc
+            orderBy: votePoint
+            first: $limit
+            skip: $skip
+            where: {
+                and: [
+                    { accessTime_: { paymentMethods_contains: $paymentMethods } }
+                    { epochWeek: $epochWeek }
+                ]
+            }
+        ) {
+            accessTime {
+                id
+                accessTimeId
+            }
+            participantCount
+            votePoint
+        }
+    }
+`;
+
+export type ProjectWeeklyVoteResponse = {
+    participantCount: string;
+    votePoint: string;
+};
+
+export const ProjectWeeklyVoteDocument = gql`
+    query ProjectWeeklyVote($epochWeek: BigInt!, $accessTime: Bytes!) {
+        accessVotes(
+            where: { and: [{ accessTime_: { id: $accessTime } }, { epochWeek: $epochWeek }] }
+        ) {
+            participantCount
+            votePoint
+        }
+    }
+`;
+
+export type CountWeeklyVoteProjectsResponse = {
+    participantCount: string;
+};
+
+export const CountWeeklyVoteProjectsDocument = gql`
+    query CountWeeklyVoteProjects($epochWeek: String!) {
+        weeklyVote(id: $epochWeek) {
+            participantCount
         }
     }
 `;

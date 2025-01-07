@@ -1,6 +1,6 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Expose } from "class-transformer";
-import { Address } from "src/helpers";
+import { Address } from "viem";
 
 export class ProjectResponseDto {
     @Expose()
@@ -34,4 +34,8 @@ export class ProjectResponseDto {
     @Expose()
     @ApiProperty()
     prevOwner: Address;
+
+    @Expose()
+    @ApiProperty()
+    updateTimestamp: string;
 }

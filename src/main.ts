@@ -1,14 +1,18 @@
 import { NestFactory } from "@nestjs/core";
-import { AppModule } from "./app.module";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
+import { Api } from "@accesstimeio/accesstime-common";
+
+import { AppModule } from "./app.module";
 
 async function bootstrap() {
     const app = await NestFactory.create(AppModule);
 
     const allowlist = [
         "http://localhost:5173",
+        "http://localhost:3000",
         "https://accesstime.io",
-        "https://app.accesstime.io"
+        "https://app.accesstime.io",
+        "https://portal.accesstime.io"
     ];
     const corsOptionsDelegate = function (req: any, callback: any) {
         let corsOptions: { origin: boolean };
@@ -26,8 +30,8 @@ async function bootstrap() {
 
     const config = new DocumentBuilder()
         .setTitle("AccessTime")
-        .setDescription("Dashboard API")
-        .setVersion("0.0.1")
+        .setDescription("API")
+        .setVersion(Api.version)
         .build();
     const document = SwaggerModule.createDocument(app, config);
     SwaggerModule.setup("api", app, document);
