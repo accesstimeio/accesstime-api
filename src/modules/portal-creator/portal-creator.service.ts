@@ -34,12 +34,12 @@ export class PortalCreatorService {
         const { project } = await this.getProject(chainId, id, signer);
 
         if (project.avatarUrl != null) {
-            await this.minioService.deleteFile("project-avatar", project.avatarUrl);
+            await this.minioService.deleteFile(project.avatarUrl);
         }
 
         const newFileName = generateFilename("project-avatar", signer);
 
-        await this.minioService.uploadFile("project-avatar", newFileName, file);
+        await this.minioService.uploadFile(newFileName, file);
 
         project.$set({ avatarUrl: newFileName });
 
@@ -138,12 +138,12 @@ export class PortalCreatorService {
         const { project } = await this.getProject(chainId, id, signer);
 
         if (project.contentUrl != null) {
-            await this.minioService.deleteFile("project-content", project.contentUrl);
+            await this.minioService.deleteFile(project.contentUrl);
         }
 
         const newFileName = generateFilename("project-content", signer);
 
-        await this.minioService.uploadFile("project-content", newFileName, file);
+        await this.minioService.uploadFile(newFileName, file);
 
         project.$set({ contentUrl: newFileName });
 
@@ -203,13 +203,10 @@ export class PortalCreatorService {
             const removedPackageId = removedPackageIds[i];
             const _package = project.packages.find((_package) => _package.id == removedPackageId);
             if (_package.backgroundUrl != null) {
-                await this.minioService.deleteFile(
-                    "project-package-background",
-                    _package.backgroundUrl
-                );
+                await this.minioService.deleteFile(_package.backgroundUrl);
             }
             if (_package.contentUrl != null) {
-                await this.minioService.deleteFile("project-package-content", _package.contentUrl);
+                await this.minioService.deleteFile(_package.contentUrl);
             }
         }
 
@@ -255,13 +252,10 @@ export class PortalCreatorService {
             const _package = project.packages[i];
             if (_package.id == packageId) {
                 if (_package.backgroundUrl != null) {
-                    await this.minioService.deleteFile(
-                        "project-package-background",
-                        _package.backgroundUrl
-                    );
+                    await this.minioService.deleteFile(_package.backgroundUrl);
                 }
                 newFileName = generateFilename("project-package-background", signer);
-                await this.minioService.uploadFile("project-package-background", newFileName, file);
+                await this.minioService.uploadFile(newFileName, file);
 
                 newPackages.push({
                     ..._package,
@@ -305,14 +299,11 @@ export class PortalCreatorService {
             const _package = project.packages[i];
             if (_package.id == packageId) {
                 if (_package.contentUrl != null) {
-                    await this.minioService.deleteFile(
-                        "project-package-content",
-                        _package.contentUrl
-                    );
+                    await this.minioService.deleteFile(_package.contentUrl);
                 }
 
                 newFileName = generateFilename("project-package-content", signer);
-                await this.minioService.uploadFile("project-package-content", newFileName, file);
+                await this.minioService.uploadFile(newFileName, file);
 
                 newPackages.push({
                     ..._package,

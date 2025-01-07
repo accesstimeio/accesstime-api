@@ -38,7 +38,8 @@ const NODE_ENV = process.env.NODE_ENV;
                 MINIO_PORT: Joi.number(),
                 MINIO_SSL: Joi.string().required(),
                 MINIO_ACCESS_KEY: Joi.string().required(),
-                MINIO_SECRET_KEY: Joi.string().required()
+                MINIO_SECRET_KEY: Joi.string().required(),
+                MINIO_BUCKET_NAME: Joi.string().required()
             })
         }),
         ScheduleModule.forRoot(),
@@ -83,7 +84,7 @@ const NODE_ENV = process.env.NODE_ENV;
             useFactory: () => ({
                 isGlobal: true,
                 endPoint: process.env.MINIO_ENDPOINT,
-                port: Number(process.env.MINIO_PORT),
+                port: process.env.MINIO_PORT && Number(process.env.MINIO_PORT),
                 useSSL: process.env.MINIO_SSL == "true",
                 accessKey: process.env.MINIO_ACCESS_KEY,
                 secretKey: process.env.MINIO_SECRET_KEY

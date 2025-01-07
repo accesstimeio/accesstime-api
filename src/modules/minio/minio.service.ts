@@ -4,11 +4,19 @@ import { Client } from "minio";
 
 @Injectable()
 export class MinioService {
-    constructor(@Inject(MINIO_CONNECTION) private readonly minioClient: Client) {}
+    private BUCKET_NAME: string = "";
+    constructor(@Inject(MINIO_CONNECTION) private readonly minioClient: Client) {
+        this.BUCKET_NAME = process.env.MINIO_BUCKET_NAME;
+    }
 
-    async uploadFile(bucketName: string, fileName: string, file: Express.Multer.File) {
+    async uploadFile(fileName: string, file: Express.Multer.File) {
         try {
-            return await this.minioClient.putObject(bucketName, fileName, file.buffer, file.size);
+            return await this.minioClient.putObject(
+                this.BUCKET_NAME,
+                fileName,
+                file.buffer,
+                file.size
+            );
         } catch (_err) {
             throw new HttpException(
                 {
@@ -19,8 +27,8 @@ export class MinioService {
         }
     }
 
-    async deleteFile(bucketName: string, fileName: string) {
-        const file = await this.minioClient.getObject(bucketName, fileName);
+    async deleteFile(fileName: string) {
+        const file = await this.minioClient.getObject(this.BUCKET_NAME, fileName);
         if (!file.readableLength) {
             throw new HttpException(
                 {
@@ -30,7 +38,7 @@ export class MinioService {
             );
         }
         try {
-            return await this.minioClient.removeObject(bucketName, fileName);
+            return await this.minioClient.removeObject(this.BUCKET_NAME, fileName);
         } catch (_err) {
             throw new HttpException(
                 {
