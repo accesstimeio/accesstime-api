@@ -5,7 +5,7 @@ export class AppService {
     base() {
         return {
             status: true,
-            name: "AccessTime - Dashboard API"
+            name: "AccessTime API"
         };
     }
 }

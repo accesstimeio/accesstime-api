@@ -1,4 +1,4 @@
-# AccessTime Dashboard API
+# AccessTime API
 
 ## Installation
 
