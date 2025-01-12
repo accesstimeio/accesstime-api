@@ -14,6 +14,7 @@ import { CronModule } from "./modules/cron/cron.module";
 import { PortalModule } from "./modules/portal/portal.module";
 import { PortalCreatorModule } from "./modules/portal-creator/portal-creator.module";
 import { NestMinioModule } from "nestjs-minio";
+import { PortalLinkModule } from "./modules/portal-link/portal-link.module";
 
 const NODE_ENV = process.env.NODE_ENV;
 
@@ -55,6 +56,7 @@ const NODE_ENV = process.env.NODE_ENV;
         CronModule,
         PortalModule,
         PortalCreatorModule,
+        PortalLinkModule,
         RouterModule.register([
             {
                 path: "portal",
@@ -63,6 +65,10 @@ const NODE_ENV = process.env.NODE_ENV;
                     {
                         path: "creator",
                         module: PortalCreatorModule
+                    },
+                    {
+                        path: "link",
+                        module: PortalLinkModule
                     }
                 ]
             },
