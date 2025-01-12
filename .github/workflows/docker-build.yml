@@ -41,6 +41,3 @@ jobs:
           context: .
           push: true
           tags: ${{ env.tags }}
-
-      - name: Output Image Tags
-        run: echo "Image built and pushed with tags: ${ env.tags }"
