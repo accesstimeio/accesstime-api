@@ -6,7 +6,7 @@ import { Address, decodeAbiParameters, Hash } from "viem";
 
 import { getFactoryOwner } from "src/helpers";
 
-import { CheckResponseDto, UpdateStatusDto } from "./dto";
+import { CheckResponseDto, UpdateStatusResponseDto } from "./dto";
 import { Domain } from "./schemas/domain.schema";
 
 @Injectable()
@@ -52,7 +52,7 @@ export class PortalLinkService {
         hashedLink: Hash,
         status: boolean,
         signer: Address
-    ): Promise<UpdateStatusDto> {
+    ): Promise<UpdateStatusResponseDto> {
         let link: string;
         try {
             const [decodedLink] = decodeAbiParameters([{ type: "string" }], hashedLink);

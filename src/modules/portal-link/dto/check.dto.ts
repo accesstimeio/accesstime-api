@@ -4,5 +4,5 @@ import { Expose } from "class-transformer";
 export class CheckResponseDto {
     @Expose()
     @ApiProperty()
-    allowed: boolean | null;
+    allowed: boolean;
 }

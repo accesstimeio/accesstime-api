@@ -1,8 +1,15 @@
-import { ApiProperty } from "@nestjs/swagger";
+import { ApiProperty, OmitType } from "@nestjs/swagger";
 import { Expose } from "class-transformer";
 import { Address } from "viem";
+import { ProjectCardDto } from "./project.dto";
 
-export class FeaturedsResponseDto {
+export class FeaturedsResponseDto extends OmitType(ProjectCardDto, [
+    "id",
+    "votePoint",
+    "voteParticipantCount",
+    "isFavorited",
+    "categories"
+]) {
     @Expose()
     @ApiProperty()
     id: string;
@@ -14,16 +21,4 @@ export class FeaturedsResponseDto {
     @Expose()
     @ApiProperty()
     address: Address;
-
-    @Expose()
-    @ApiProperty()
-    avatarUrl: string | null;
-
-    @Expose()
-    @ApiProperty()
-    domainVerify: boolean;
-
-    @Expose()
-    @ApiProperty()
-    portalVerify: boolean;
 }

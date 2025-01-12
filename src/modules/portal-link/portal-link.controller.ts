@@ -5,7 +5,7 @@ import { Address, Hash } from "viem";
 import { Signer } from "src/decorators/signer.decorator";
 
 import { PortalLinkService } from "./portal-link.service";
-import { CheckResponseDto, UpdateStatusDto } from "./dto";
+import { CheckResponseDto, UpdateStatusDto, UpdateStatusResponseDto } from "./dto";
 
 @UsePipes(new ValidationPipe({ transform: true }))
 @Controller()
@@ -30,6 +30,9 @@ export class PortalLinkController {
             required: true
         }
     ])
+    @ApiResponse({
+        type: UpdateStatusResponseDto
+    })
     @Post("/update-status/:hashedLink")
     updateStatus(
         @Param("hashedLink") hashedLink: Hash,

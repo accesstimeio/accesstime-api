@@ -137,7 +137,7 @@ export class PortalController {
         @Param("chainId") chainId: number,
         @Param("id") id: number,
         @Signer(true) signer: Address
-    ): Promise<{ isFavoritedNow: boolean | null }> {
+    ) {
         return this.portalService.toggleFavorite(chainId, id, signer);
     }
 

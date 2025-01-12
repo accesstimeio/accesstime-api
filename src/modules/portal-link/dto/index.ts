@@ -1,4 +1,4 @@
 import { CheckResponseDto } from "./check.dto";
-import { UpdateStatusDto } from "./update-status.dto";
+import { UpdateStatusDto, UpdateStatusResponseDto } from "./update-status.dto";
 
-export { CheckResponseDto, UpdateStatusDto };
+export { CheckResponseDto, UpdateStatusDto, UpdateStatusResponseDto };
