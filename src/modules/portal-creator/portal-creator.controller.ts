@@ -25,12 +25,23 @@ import {
     UpdateProjectPackagesDto,
     UpdateProjectSocialsDto
 } from "./dto";
+import { ApiHeaders } from "@nestjs/swagger";
 
 @UsePipes(new ValidationPipe({ transform: true }))
 @Controller()
 export class PortalCreatorController {
     constructor(private readonly portalCreatorService: PortalCreatorService) {}
 
+    @ApiHeaders([
+        {
+            name: "X-ACCESSTIME-AUTH-MESSAGE",
+            required: true
+        },
+        {
+            name: "X-ACCESSTIME-AUTH-SIGNATURE",
+            required: true
+        }
+    ])
     @Post("/update-project-avatar/:chainId/:id")
     @UseInterceptors(FileInterceptor("file"))
     updateProjectAvatar(
@@ -50,6 +61,16 @@ export class PortalCreatorController {
         return this.portalCreatorService.updateProjectAvatar(chainId, id, signer, file);
     }
 
+    @ApiHeaders([
+        {
+            name: "X-ACCESSTIME-AUTH-MESSAGE",
+            required: true
+        },
+        {
+            name: "X-ACCESSTIME-AUTH-SIGNATURE",
+            required: true
+        }
+    ])
     @Post("/update-project-socials/:chainId/:id")
     updateProjectSocials(
         @Param("chainId") chainId: number,
@@ -60,6 +81,16 @@ export class PortalCreatorController {
         return this.portalCreatorService.updateProjectSocials(chainId, id, signer, data);
     }
 
+    @ApiHeaders([
+        {
+            name: "X-ACCESSTIME-AUTH-MESSAGE",
+            required: true
+        },
+        {
+            name: "X-ACCESSTIME-AUTH-SIGNATURE",
+            required: true
+        }
+    ])
     @Post("/update-project-categories/:chainId/:id")
     updateProjectCategories(
         @Param("chainId") chainId: number,
@@ -70,6 +101,16 @@ export class PortalCreatorController {
         return this.portalCreatorService.updateProjectCategories(chainId, id, signer, data);
     }
 
+    @ApiHeaders([
+        {
+            name: "X-ACCESSTIME-AUTH-MESSAGE",
+            required: true
+        },
+        {
+            name: "X-ACCESSTIME-AUTH-SIGNATURE",
+            required: true
+        }
+    ])
     @Post("/update-project-content/:chainId/:id")
     @UseInterceptors(FileInterceptor("file"))
     updateProjectContent(
@@ -89,6 +130,16 @@ export class PortalCreatorController {
         return this.portalCreatorService.updateProjectContent(chainId, id, signer, file);
     }
 
+    @ApiHeaders([
+        {
+            name: "X-ACCESSTIME-AUTH-MESSAGE",
+            required: true
+        },
+        {
+            name: "X-ACCESSTIME-AUTH-SIGNATURE",
+            required: true
+        }
+    ])
     @Post("/update-project-packages/:chainId/:id")
     updateProjectPackages(
         @Param("chainId") chainId: number,
@@ -99,6 +150,16 @@ export class PortalCreatorController {
         return this.portalCreatorService.updateProjectPackages(chainId, id, signer, data);
     }
 
+    @ApiHeaders([
+        {
+            name: "X-ACCESSTIME-AUTH-MESSAGE",
+            required: true
+        },
+        {
+            name: "X-ACCESSTIME-AUTH-SIGNATURE",
+            required: true
+        }
+    ])
     @Post("/update-project-package-image/:chainId/:id/:packageId")
     @UseInterceptors(FileInterceptor("file"))
     updateProjectPackageImage(
@@ -127,6 +188,16 @@ export class PortalCreatorController {
         );
     }
 
+    @ApiHeaders([
+        {
+            name: "X-ACCESSTIME-AUTH-MESSAGE",
+            required: true
+        },
+        {
+            name: "X-ACCESSTIME-AUTH-SIGNATURE",
+            required: true
+        }
+    ])
     @Post("/update-project-package-content/:chainId/:id/:packageId")
     @UseInterceptors(FileInterceptor("file"))
     updateProjectPackageContent(

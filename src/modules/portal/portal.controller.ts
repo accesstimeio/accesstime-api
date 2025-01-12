@@ -1,5 +1,5 @@
 import { Controller, Get, Param, Post, Query, UsePipes, ValidationPipe } from "@nestjs/common";
-import { ApiQuery, ApiResponse } from "@nestjs/swagger";
+import { ApiHeaders, ApiQuery, ApiResponse } from "@nestjs/swagger";
 import { Address } from "viem";
 import { SUPPORTED_SORT_TYPE } from "@accesstimeio/accesstime-common";
 
@@ -29,6 +29,16 @@ export class PortalController {
         return this.portalService.getFeatureds();
     }
 
+    @ApiHeaders([
+        {
+            name: "X-ACCESSTIME-AUTH-MESSAGE",
+            required: false
+        },
+        {
+            name: "X-ACCESSTIME-AUTH-SIGNATURE",
+            required: false
+        }
+    ])
     @ApiQuery({
         name: "page",
         type: Number,
@@ -60,6 +70,16 @@ export class PortalController {
         return this.portalService.getExplore(chainId, page, sort, paymentMethods_, signer);
     }
 
+    @ApiHeaders([
+        {
+            name: "X-ACCESSTIME-AUTH-MESSAGE",
+            required: true
+        },
+        {
+            name: "X-ACCESSTIME-AUTH-SIGNATURE",
+            required: true
+        }
+    ])
     @ApiQuery({
         name: "page",
         type: Number,
@@ -77,6 +97,16 @@ export class PortalController {
         return this.portalService.getFavorites(chainId, signer, page);
     }
 
+    @ApiHeaders([
+        {
+            name: "X-ACCESSTIME-AUTH-MESSAGE",
+            required: false
+        },
+        {
+            name: "X-ACCESSTIME-AUTH-SIGNATURE",
+            required: false
+        }
+    ])
     @ApiResponse({
         type: ProjectDto
     })
@@ -89,6 +119,16 @@ export class PortalController {
         return this.portalService.getProjectById(chainId, id, signer);
     }
 
+    @ApiHeaders([
+        {
+            name: "X-ACCESSTIME-AUTH-MESSAGE",
+            required: true
+        },
+        {
+            name: "X-ACCESSTIME-AUTH-SIGNATURE",
+            required: true
+        }
+    ])
     @ApiResponse({
         type: ProjectToggleFavoriteResponseDto
     })
@@ -109,6 +149,16 @@ export class PortalController {
         return this.portalService.getProjectVotes(chainId, id);
     }
 
+    @ApiHeaders([
+        {
+            name: "X-ACCESSTIME-AUTH-MESSAGE",
+            required: true
+        },
+        {
+            name: "X-ACCESSTIME-AUTH-SIGNATURE",
+            required: true
+        }
+    ])
     @Post("/project/:chainId/:id/toggle-featured")
     getToggleFeatured(
         @Param("chainId") chainId: number,
@@ -118,6 +168,16 @@ export class PortalController {
         return this.portalService.toggleFeatured(chainId, id, signer);
     }
 
+    @ApiHeaders([
+        {
+            name: "X-ACCESSTIME-AUTH-MESSAGE",
+            required: true
+        },
+        {
+            name: "X-ACCESSTIME-AUTH-SIGNATURE",
+            required: true
+        }
+    ])
     @Post("/project/:chainId/:id/toggle-portal-verify")
     getTogglePortalVerify(
         @Param("chainId") chainId: number,
