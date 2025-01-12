@@ -53,6 +53,14 @@ export class ProjectCardDto {
     isFavorited: boolean;
 
     @Expose()
+    @ApiProperty()
+    domainVerify: boolean;
+
+    @Expose()
+    @ApiProperty()
+    portalVerify: boolean;
+
+    @Expose()
     @ApiProperty({
         isArray: true
     })

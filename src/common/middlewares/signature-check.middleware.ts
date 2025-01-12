@@ -2,7 +2,7 @@ import { Injectable, NestMiddleware } from "@nestjs/common";
 import { Request, Response, NextFunction } from "express";
 import { Hash } from "viem";
 
-import { signatureCheck } from "src/helpers/signature-check";
+import { signatureCheck } from "src/helpers";
 
 @Injectable()
 export default class SignatureCheckMiddleware implements NestMiddleware {

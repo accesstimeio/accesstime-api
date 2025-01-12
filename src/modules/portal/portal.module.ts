@@ -1,5 +1,7 @@
 import { MiddlewareConsumer, Module, NestModule, RequestMethod } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
+import { CacheModule } from "@nestjs/cache-manager";
+import * as redisStore from "cache-manager-redis-store";
 
 import ChainIdCheckMiddleware from "src/common/middlewares/chain-id-check.middleware";
 import SignatureCheckMiddleware from "src/common/middlewares/signature-check.middleware";
@@ -17,7 +19,15 @@ import { SubgraphModule } from "../subgraph/subgraph.module";
             { name: Project.name, useFactory: () => ProjectSchema },
             { name: ProjectFavorite.name, useFactory: () => ProjectFavoriteSchema }
         ]),
-        SubgraphModule
+        SubgraphModule,
+        CacheModule.registerAsync({
+            useFactory: () => ({
+                store: redisStore,
+                host: process.env.REDIS_HOST,
+                port: process.env.REDIS_PORT,
+                password: process.env.REDIS_PASSWORD
+            })
+        })
     ],
     controllers: [PortalController],
     providers: [PortalService]

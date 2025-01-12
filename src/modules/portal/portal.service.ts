@@ -1,15 +1,16 @@
-import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
+import { HttpException, HttpStatus, Inject, Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Document, Model } from "mongoose";
 import { Address, isAddress } from "viem";
 import { SUPPORTED_SORT_TYPE, Portal } from "@accesstimeio/accesstime-common";
 
-import { getEpochWeek } from "src/helpers";
+import { getEpochWeek, getFactoryOwner } from "src/helpers";
 
 import { Project } from "./schemas/project.schema";
 import { ProjectFavorite } from "./schemas/project-favorite.schema";
 import {
     ExploreResponseDto,
+    FeaturedsResponseDto,
     ProjectCardDto,
     ProjectDto,
     ProjectToggleFavoriteResponseDto,
@@ -18,6 +19,7 @@ import {
 } from "./dto";
 
 import { SubgraphService } from "../subgraph/subgraph.service";
+import { CACHE_MANAGER, Cache } from "@nestjs/cache-manager";
 
 interface CacheProject extends ProjectCardDto {
     accessTimeId: number;
@@ -29,8 +31,33 @@ export class PortalService {
         @InjectModel(Project.name) private readonly projectModel: Model<Project>,
         @InjectModel(ProjectFavorite.name)
         private readonly projectFavoriteModel: Model<ProjectFavorite>,
-        private readonly subgraphService: SubgraphService
+        private readonly subgraphService: SubgraphService,
+        @Inject(CACHE_MANAGER) private cacheService: Cache
     ) {}
+
+    async getFeatureds() {
+        const dataKey = `portal-featureds`;
+
+        const cachedData = await this.cacheService.get<FeaturedsResponseDto[]>(dataKey);
+
+        if (cachedData) {
+            return cachedData;
+        } else {
+            const featuredProjects = await this.projectModel
+                .find({ featured: true })
+                .sort({
+                    chainUpdateTimestamp: "desc"
+                })
+                .select(["id", "chainId", "address", "avatarUrl", "domainVerify", "portalVerify"])
+                .exec();
+
+            await this.cacheService.set(dataKey, featuredProjects, {
+                ttl: Number(process.env.PROJECT_TTL)
+            });
+
+            return featuredProjects;
+        }
+    }
 
     async getExplore(
         chainId: number,
@@ -119,7 +146,9 @@ export class PortalService {
                             votePoint: Number(totalVotePoint),
                             voteParticipantCount: Number(totalVoteParticipantCount),
                             isFavorited: false,
-                            categories: []
+                            categories: [],
+                            domainVerify: false,
+                            portalVerify: false
                         });
                     }
                 );
@@ -140,7 +169,9 @@ export class PortalService {
                             votePoint: Number(totalVotePoint),
                             voteParticipantCount: Number(totalVoteParticipantCount),
                             isFavorited: false,
-                            categories: []
+                            categories: [],
+                            domainVerify: false,
+                            portalVerify: false
                         });
                     }
                 );
@@ -161,7 +192,9 @@ export class PortalService {
                         votePoint: Number(votePoint),
                         voteParticipantCount: Number(participantCount),
                         isFavorited: false,
-                        categories: []
+                        categories: [],
+                        domainVerify: false,
+                        portalVerify: false
                     });
                 });
                 break;
@@ -173,7 +206,7 @@ export class PortalService {
             .find({ chainId })
             .where("id")
             .in(projectIds)
-            .select(["id", "avatarUrl", "categories"])
+            .select(["id", "avatarUrl", "categories", "domainVerify", "portalVerify"])
             .exec();
 
         let userFavorites: ProjectFavorite[] = [];
@@ -193,7 +226,11 @@ export class PortalService {
                 projectDocuments.find((pd) => pd.id == project.accessTimeId)?.avatarUrl ?? null,
             categories:
                 projectDocuments.find((pd) => pd.id == project.accessTimeId)?.categories ?? [],
-            isFavorited: userFavorites.find((uf) => uf.id == project.accessTimeId) ? true : false
+            isFavorited: userFavorites.find((uf) => uf.id == project.accessTimeId) ? true : false,
+            domainVerify:
+                projectDocuments.find((pd) => pd.id == project.accessTimeId)?.domainVerify ?? false,
+            portalVerify:
+                projectDocuments.find((pd) => pd.id == project.accessTimeId)?.portalVerify ?? false
         }));
 
         return { countProjects, maxPage: Math.floor(countProjects / limit), projects };
@@ -237,7 +274,7 @@ export class PortalService {
             .find()
             .where("id")
             .in(userFavoritedProjectIds)
-            .select(["address", "avatarUrl", "categories"])
+            .select(["address", "avatarUrl", "categories", "domainVerify", "portalVerify"])
             .exec();
 
         const projects: ProjectCardDto[] = userFavoriteProjectDocuments.map((project) => ({
@@ -246,7 +283,9 @@ export class PortalService {
             votePoint: 0,
             voteParticipantCount: 0,
             isFavorited: true,
-            categories: project.categories
+            categories: project.categories,
+            domainVerify: project.domainVerify,
+            portalVerify: project.portalVerify
         }));
 
         return {
@@ -303,7 +342,16 @@ export class PortalService {
             projectAddress
         );
 
-        const { avatarUrl, socials, categories, contentUrl, paymentMethods, packages } = project;
+        const {
+            avatarUrl,
+            socials,
+            categories,
+            contentUrl,
+            paymentMethods,
+            packages,
+            domainVerify,
+            portalVerify
+        } = project;
 
         return {
             avatarUrl,
@@ -315,7 +363,9 @@ export class PortalService {
             categories,
             contentUrl,
             paymentMethods,
-            packages
+            packages,
+            domainVerify,
+            portalVerify
         };
     }
 
@@ -387,6 +437,73 @@ export class PortalService {
             votePoint,
             voteParticipantCount
         };
+    }
+
+    async toggleFeatured(chainId: number, id: number, signer: Address) {
+        const factoryOwner = await getFactoryOwner(chainId);
+
+        if (factoryOwner.toLowerCase() != signer.toLowerCase()) {
+            throw new HttpException(
+                {
+                    errors: { message: "Only factory owner authorized." }
+                },
+                HttpStatus.UNAUTHORIZED
+            );
+        }
+
+        const projectCount = await this.projectModel.countDocuments({ id, chainId });
+
+        if (projectCount == 0) {
+            throw new HttpException(
+                {
+                    errors: { message: "Requested project is not found." }
+                },
+                HttpStatus.EXPECTATION_FAILED
+            );
+        }
+
+        const project = await this.projectModel.findOne({ id, chainId });
+        const newStatus = typeof project.featured == "boolean" ? !project.featured : true;
+
+        project.$set({ featured: newStatus });
+
+        await project.save();
+        await this.cacheService.del("portal-featureds");
+
+        return true;
+    }
+
+    async togglePortalVerify(chainId: number, id: number, signer: Address) {
+        const factoryOwner = await getFactoryOwner(chainId);
+
+        if (factoryOwner.toLowerCase() != signer.toLowerCase()) {
+            throw new HttpException(
+                {
+                    errors: { message: "Only factory owner authorized." }
+                },
+                HttpStatus.UNAUTHORIZED
+            );
+        }
+
+        const projectCount = await this.projectModel.countDocuments({ id, chainId });
+
+        if (projectCount == 0) {
+            throw new HttpException(
+                {
+                    errors: { message: "Requested project is not found." }
+                },
+                HttpStatus.EXPECTATION_FAILED
+            );
+        }
+
+        const project = await this.projectModel.findOne({ id, chainId });
+        const newStatus = typeof project.portalVerify == "boolean" ? !project.portalVerify : true;
+
+        project.$set({ portalVerify: newStatus });
+
+        await project.save();
+
+        return true;
     }
 
     private async isProjectFavoritedByUser(

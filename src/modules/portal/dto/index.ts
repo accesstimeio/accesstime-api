@@ -1,4 +1,5 @@
 import { ExploreResponseDto } from "./explore.dto";
+import { FeaturedsResponseDto } from "./featureds.dto";
 import { ProjectToggleFavoriteResponseDto } from "./project-toggle-favorite.dto";
 import { ProjectVotesResponseDto } from "./project-votes.dto";
 import { ProjectCardDto, ProjectSocialDto, ProjectDto } from "./project.dto";
@@ -11,5 +12,6 @@ export {
     ProjectDto,
     UserFavoritesResponseDto,
     ProjectToggleFavoriteResponseDto,
-    ProjectVotesResponseDto
+    ProjectVotesResponseDto,
+    FeaturedsResponseDto
 };

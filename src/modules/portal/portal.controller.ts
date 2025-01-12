@@ -8,6 +8,7 @@ import { Signer } from "src/decorators/signer.decorator";
 import { PortalService } from "./portal.service";
 import {
     ExploreResponseDto,
+    FeaturedsResponseDto,
     ProjectDto,
     ProjectToggleFavoriteResponseDto,
     ProjectVotesResponseDto,
@@ -19,9 +20,13 @@ import {
 export class PortalController {
     constructor(private readonly portalService: PortalService) {}
 
+    @ApiResponse({
+        type: FeaturedsResponseDto,
+        isArray: true
+    })
     @Get("/featureds")
     getFeatureds() {
-        return true;
+        return this.portalService.getFeatureds();
     }
 
     @ApiQuery({
@@ -102,5 +107,23 @@ export class PortalController {
     @Get("/project/:chainId/:id/votes")
     async getProjectVotes(@Param("chainId") chainId: number, @Param("id") id: number) {
         return this.portalService.getProjectVotes(chainId, id);
+    }
+
+    @Post("/project/:chainId/:id/toggle-featured")
+    getToggleFeatured(
+        @Param("chainId") chainId: number,
+        @Param("id") id: number,
+        @Signer(true) signer: Address
+    ) {
+        return this.portalService.toggleFeatured(chainId, id, signer);
+    }
+
+    @Post("/project/:chainId/:id/toggle-portal-verify")
+    getTogglePortalVerify(
+        @Param("chainId") chainId: number,
+        @Param("id") id: number,
+        @Signer(true) signer: Address
+    ) {
+        return this.portalService.togglePortalVerify(chainId, id, signer);
     }
 }

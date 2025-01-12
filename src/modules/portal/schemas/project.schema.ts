@@ -43,6 +43,15 @@ export class Project {
 
     @Prop({ default: [], type: [ProjectPackageSchema] })
     packages: ProjectPackage[];
+
+    @Prop({ default: false })
+    featured: boolean;
+
+    @Prop({ default: false })
+    domainVerify: boolean;
+
+    @Prop({ default: false })
+    portalVerify: boolean;
 }
 
 export const ProjectSchema = SchemaFactory.createForClass(Project);

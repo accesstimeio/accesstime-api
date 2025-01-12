@@ -1,7 +1,7 @@
 import { createParamDecorator, ExecutionContext } from "@nestjs/common";
 import { Address, Hash } from "viem";
 
-import { signatureCheck } from "../helpers/signature-check";
+import { signatureCheck } from "../helpers";
 
 export const Signer = createParamDecorator(async (data: boolean, ctx: ExecutionContext) => {
     const request = ctx.switchToHttp().getRequest();
