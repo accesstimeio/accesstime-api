@@ -1,19 +1,12 @@
 import { HttpException, HttpStatus, Inject, Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Document, Model } from "mongoose";
-import { Address, createPublicClient, http, isAddress, zeroAddress } from "viem";
-import {
-    SUPPORTED_SORT_TYPE,
-    Portal,
-    getFactoryAddress,
-    SUPPORTED_CHAIN,
-    Chain,
-    Contract,
-    extractDomain
-} from "@accesstimeio/accesstime-common";
+import { Address, isAddress } from "viem";
+import { SUPPORTED_SORT_TYPE, Portal, extractDomain } from "@accesstimeio/accesstime-common";
 import { CACHE_MANAGER, Cache } from "@nestjs/cache-manager";
+import { Factory } from "@accesstimeio/accesstime-sdk";
 
-import { getEpochWeek, getFactoryOwner } from "src/helpers";
+import { getEpochWeek } from "src/helpers";
 import { RRDA_RESULT } from "src/types/rrda";
 
 import { Project } from "./schemas/project.schema";
@@ -423,7 +416,8 @@ export class PortalService {
     }
 
     async toggleFeatured(chainId: number, id: number, signer: Address) {
-        const factoryOwner = await getFactoryOwner(chainId);
+        const factory = new Factory({ id: chainId });
+        const factoryOwner = await factory.read.owner();
 
         if (factoryOwner.toLowerCase() != signer.toLowerCase()) {
             throw new HttpException(
@@ -446,7 +440,8 @@ export class PortalService {
     }
 
     async togglePortalVerify(chainId: number, id: number, signer: Address) {
-        const factoryOwner = await getFactoryOwner(chainId);
+        const factory = new Factory({ id: chainId });
+        const factoryOwner = await factory.read.owner();
 
         if (factoryOwner.toLowerCase() != signer.toLowerCase()) {
             throw new HttpException(
@@ -483,7 +478,8 @@ export class PortalService {
             );
         }
 
-        const projectDetails = await this.getProjectDetails(chainId, projectAddress);
+        const factory = new Factory({ id: chainId });
+        const projectDetails = await factory.read.deploymentDetails([projectAddress]);
         const domain = extractDomain(projectDetails[6]);
 
         if (domain == null) {
@@ -636,30 +632,5 @@ export class PortalService {
         }
 
         return { project, projectAddress, projectOwner };
-    }
-
-    private async getProjectDetails(chainId: number, address: Address) {
-        const factoryAddress = getFactoryAddress(chainId as SUPPORTED_CHAIN);
-
-        if (factoryAddress == zeroAddress) {
-            throw new HttpException(
-                {
-                    errors: { message: "Chain is not supported." }
-                },
-                HttpStatus.NOT_ACCEPTABLE
-            );
-        }
-
-        const client = createPublicClient({
-            chain: Chain.wagmiConfig.find((chain) => chain.id == chainId),
-            transport: http()
-        });
-
-        return client.readContract({
-            address: factoryAddress,
-            abi: Contract.abis.factory,
-            functionName: "deploymentDetails",
-            args: [address]
-        });
     }
 }

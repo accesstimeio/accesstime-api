@@ -3,8 +3,7 @@ import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import { Chain, extractDomain } from "@accesstimeio/accesstime-common";
 import { Address, decodeAbiParameters, Hash } from "viem";
-
-import { getFactoryOwner } from "src/helpers";
+import { Factory } from "@accesstimeio/accesstime-sdk";
 
 import { CheckResponseDto, UpdateStatusResponseDto } from "./dto";
 import { Domain } from "./schemas/domain.schema";
@@ -66,7 +65,8 @@ export class PortalLinkService {
             );
         }
 
-        const factoryOwner = await getFactoryOwner(Chain.ids[0]);
+        const factory = new Factory({ id: Chain.ids[0] });
+        const factoryOwner = await factory.read.owner();
 
         if (factoryOwner.toLowerCase() != signer.toLowerCase()) {
             throw new HttpException(
