@@ -4,6 +4,10 @@ import { Expose } from "class-transformer";
 export class RequestDomainVerifyResponseDto {
     @Expose()
     @ApiProperty()
+    domain: string;
+
+    @Expose()
+    @ApiProperty()
     recordKey: string;
 
     @Expose()

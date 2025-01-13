@@ -7,6 +7,7 @@ import { Signer } from "src/decorators/signer.decorator";
 
 import { PortalService } from "./portal.service";
 import {
+    CheckDomainVerifyResponseDto,
     ExploreResponseDto,
     FeaturedsResponseDto,
     ProjectDto,
@@ -220,6 +221,9 @@ export class PortalController {
             required: true
         }
     ])
+    @ApiResponse({
+        type: CheckDomainVerifyResponseDto
+    })
     @Post("/project/:chainId/:id/check-domain-verify")
     checkDomainVerify(
         @Param("chainId") chainId: number,

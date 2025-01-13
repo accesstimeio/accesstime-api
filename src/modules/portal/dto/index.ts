@@ -1,3 +1,4 @@
+import { CheckDomainVerifyResponseDto } from "./check-domain-verify";
 import { ExploreResponseDto } from "./explore.dto";
 import { FeaturedsResponseDto } from "./featureds.dto";
 import { ProjectToggleFavoriteResponseDto } from "./project-toggle-favorite.dto";
@@ -15,5 +16,6 @@ export {
     ProjectToggleFavoriteResponseDto,
     ProjectVotesResponseDto,
     FeaturedsResponseDto,
-    RequestDomainVerifyResponseDto
+    RequestDomainVerifyResponseDto,
+    CheckDomainVerifyResponseDto
 };

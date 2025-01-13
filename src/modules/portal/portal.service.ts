@@ -1,15 +1,25 @@
 import { HttpException, HttpStatus, Inject, Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Document, Model } from "mongoose";
-import { Address, isAddress } from "viem";
-import { SUPPORTED_SORT_TYPE, Portal } from "@accesstimeio/accesstime-common";
+import { Address, createPublicClient, http, isAddress, zeroAddress } from "viem";
+import {
+    SUPPORTED_SORT_TYPE,
+    Portal,
+    getFactoryAddress,
+    SUPPORTED_CHAIN,
+    Chain,
+    Contract,
+    extractDomain
+} from "@accesstimeio/accesstime-common";
 import { CACHE_MANAGER, Cache } from "@nestjs/cache-manager";
 
 import { getEpochWeek, getFactoryOwner } from "src/helpers";
+import { RRDA_RESULT } from "src/types/rrda";
 
 import { Project } from "./schemas/project.schema";
 import { ProjectFavorite } from "./schemas/project-favorite.schema";
 import {
+    CheckDomainVerifyResponseDto,
     ExploreResponseDto,
     FeaturedsResponseDto,
     ProjectCardDto,
@@ -462,7 +472,7 @@ export class PortalService {
         id: number,
         signer: Address
     ): Promise<RequestDomainVerifyResponseDto> {
-        const { projectOwner } = await this.getProject(chainId, id);
+        const { projectAddress, projectOwner } = await this.getProject(chainId, id);
 
         if (projectOwner != signer) {
             throw new HttpException(
@@ -470,6 +480,18 @@ export class PortalService {
                     errors: { message: "Caller is not owner of project." }
                 },
                 HttpStatus.UNAUTHORIZED
+            );
+        }
+
+        const projectDetails = await this.getProjectDetails(chainId, projectAddress);
+        const domain = extractDomain(projectDetails[6]);
+
+        if (domain == null) {
+            throw new HttpException(
+                {
+                    errors: { message: "Project domain is not acceptable." }
+                },
+                HttpStatus.NOT_ACCEPTABLE
             );
         }
 
@@ -481,8 +503,8 @@ export class PortalService {
             projectDomain = new this.projectDomainModel({
                 chainId,
                 id,
-                domain: "??", // to-do
-                recordKey: `_accesstime-8453-45-${Math.random().toString(36).substring(2, 10)}`,
+                domain,
+                recordKey: `_accesstime-${chainId}-${id}-${Math.random().toString(36).substring(2, 10)}`,
                 recordValue: `at-${Math.random().toString(36).substring(2, 10)}`
             });
 
@@ -501,13 +523,65 @@ export class PortalService {
         }
 
         return {
+            domain: projectDomain.domain,
             recordKey: projectDomain.recordKey,
             recordValue: projectDomain.recordValue
         };
     }
 
-    async checkDomainVerify(chainId: number, id: number, signer: Address) {
-        return [chainId, id, signer]; // to-do
+    async checkDomainVerify(
+        chainId: number,
+        id: number,
+        signer: Address
+    ): Promise<CheckDomainVerifyResponseDto> {
+        const { project, projectOwner } = await this.getProject(chainId, id);
+
+        if (projectOwner != signer) {
+            throw new HttpException(
+                {
+                    errors: { message: "Caller is not owner of project." }
+                },
+                HttpStatus.UNAUTHORIZED
+            );
+        }
+
+        const projectDomainCount = await this.projectDomainModel.countDocuments({ chainId, id });
+
+        if (projectDomainCount == 0) {
+            throw new HttpException(
+                {
+                    errors: { message: "Domain verify request is not found!" }
+                },
+                HttpStatus.EXPECTATION_FAILED
+            );
+        }
+
+        const projectDomain = await this.projectDomainModel.findOne({ chainId, id });
+
+        try {
+            // 1.1.1.1:53 -> cloudflare dns resolver
+            const rrdaResult: RRDA_RESULT = await (
+                await fetch(
+                    `${process.env.RRDA_URL}/1.1.1.1:53/${projectDomain.recordKey}.${projectDomain.domain}/txt`
+                )
+            ).json();
+
+            const recordValue = rrdaResult.answer[0]?.rdata;
+
+            if (recordValue) {
+                const cleanedRecordValue = recordValue.replace(/["\\]/g, "");
+                if (cleanedRecordValue == projectDomain.recordValue) {
+                    project.$set({ domainVerify: true });
+
+                    await project.save();
+                    return { status: true };
+                }
+            }
+
+            return { status: false };
+        } catch (_err) {
+            return { status: false };
+        }
     }
 
     private async isProjectFavoritedByUser(
@@ -562,5 +636,30 @@ export class PortalService {
         }
 
         return { project, projectAddress, projectOwner };
+    }
+
+    private async getProjectDetails(chainId: number, address: Address) {
+        const factoryAddress = getFactoryAddress(chainId as SUPPORTED_CHAIN);
+
+        if (factoryAddress == zeroAddress) {
+            throw new HttpException(
+                {
+                    errors: { message: "Chain is not supported." }
+                },
+                HttpStatus.NOT_ACCEPTABLE
+            );
+        }
+
+        const client = createPublicClient({
+            chain: Chain.wagmiConfig.find((chain) => chain.id == chainId),
+            transport: http()
+        });
+
+        return client.readContract({
+            address: factoryAddress,
+            abi: Contract.abis.factory,
+            functionName: "deploymentDetails",
+            args: [address]
+        });
     }
 }
