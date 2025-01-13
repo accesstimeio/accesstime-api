@@ -12,6 +12,7 @@ import {
     ProjectDto,
     ProjectToggleFavoriteResponseDto,
     ProjectVotesResponseDto,
+    RequestDomainVerifyResponseDto,
     UserFavoritesResponseDto
 } from "./dto";
 
@@ -185,5 +186,46 @@ export class PortalController {
         @Signer(true) signer: Address
     ) {
         return this.portalService.togglePortalVerify(chainId, id, signer);
+    }
+
+    @ApiHeaders([
+        {
+            name: "X-ACCESSTIME-AUTH-MESSAGE",
+            required: true
+        },
+        {
+            name: "X-ACCESSTIME-AUTH-SIGNATURE",
+            required: true
+        }
+    ])
+    @ApiResponse({
+        type: RequestDomainVerifyResponseDto
+    })
+    @Post("/project/:chainId/:id/request-domain-verify")
+    requestDomainVerify(
+        @Param("chainId") chainId: number,
+        @Param("id") id: number,
+        @Signer(true) signer: Address
+    ) {
+        return this.portalService.requestDomainVerify(chainId, id, signer);
+    }
+
+    @ApiHeaders([
+        {
+            name: "X-ACCESSTIME-AUTH-MESSAGE",
+            required: true
+        },
+        {
+            name: "X-ACCESSTIME-AUTH-SIGNATURE",
+            required: true
+        }
+    ])
+    @Post("/project/:chainId/:id/check-domain-verify")
+    checkDomainVerify(
+        @Param("chainId") chainId: number,
+        @Param("id") id: number,
+        @Signer(true) signer: Address
+    ) {
+        return this.portalService.checkDomainVerify(chainId, id, signer);
     }
 }

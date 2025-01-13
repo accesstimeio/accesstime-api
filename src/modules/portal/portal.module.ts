@@ -10,14 +10,17 @@ import { PortalController } from "./portal.controller";
 import { PortalService } from "./portal.service";
 import { Project, ProjectSchema } from "./schemas/project.schema";
 import { ProjectFavorite, ProjectFavoriteSchema } from "./schemas/project-favorite.schema";
+import { ProjectDomain, ProjectDomainSchema } from "./schemas/portal-domain.schema";
 
 import { SubgraphModule } from "../subgraph/subgraph.module";
+import { ProjectModule } from "../project/project.module";
 
 @Module({
     imports: [
         MongooseModule.forFeatureAsync([
             { name: Project.name, useFactory: () => ProjectSchema },
-            { name: ProjectFavorite.name, useFactory: () => ProjectFavoriteSchema }
+            { name: ProjectFavorite.name, useFactory: () => ProjectFavoriteSchema },
+            { name: ProjectDomain.name, useFactory: () => ProjectDomainSchema }
         ]),
         SubgraphModule,
         CacheModule.registerAsync({
@@ -27,7 +30,8 @@ import { SubgraphModule } from "../subgraph/subgraph.module";
                 port: process.env.REDIS_PORT,
                 password: process.env.REDIS_PASSWORD
             })
-        })
+        }),
+        ProjectModule
     ],
     controllers: [PortalController],
     providers: [PortalService]

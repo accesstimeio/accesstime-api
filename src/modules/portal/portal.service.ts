@@ -3,6 +3,7 @@ import { InjectModel } from "@nestjs/mongoose";
 import { Document, Model } from "mongoose";
 import { Address, isAddress } from "viem";
 import { SUPPORTED_SORT_TYPE, Portal } from "@accesstimeio/accesstime-common";
+import { CACHE_MANAGER, Cache } from "@nestjs/cache-manager";
 
 import { getEpochWeek, getFactoryOwner } from "src/helpers";
 
@@ -15,11 +16,13 @@ import {
     ProjectDto,
     ProjectToggleFavoriteResponseDto,
     ProjectVotesResponseDto,
+    RequestDomainVerifyResponseDto,
     UserFavoritesResponseDto
 } from "./dto";
+import { ProjectDomain } from "./schemas/portal-domain.schema";
 
 import { SubgraphService } from "../subgraph/subgraph.service";
-import { CACHE_MANAGER, Cache } from "@nestjs/cache-manager";
+import { ProjectService } from "../project/project.service";
 
 interface CacheProject extends ProjectCardDto {
     accessTimeId: number;
@@ -31,8 +34,11 @@ export class PortalService {
         @InjectModel(Project.name) private readonly projectModel: Model<Project>,
         @InjectModel(ProjectFavorite.name)
         private readonly projectFavoriteModel: Model<ProjectFavorite>,
+        @InjectModel(ProjectDomain.name)
+        private readonly projectDomainModel: Model<ProjectDomain>,
         private readonly subgraphService: SubgraphService,
-        @Inject(CACHE_MANAGER) private cacheService: Cache
+        @Inject(CACHE_MANAGER) private cacheService: Cache,
+        private readonly projectService: ProjectService
     ) {}
 
     async getFeatureds() {
@@ -296,40 +302,7 @@ export class PortalService {
     }
 
     async getProjectById(chainId: number, id: number, user?: Address): Promise<ProjectDto> {
-        const projectFromChain = await this.getProjectFromChain(chainId, id);
-
-        const projectLastUpdate = Number(projectFromChain.updateTimestamp);
-        const projectAddress = projectFromChain.id;
-        const projectPaymentMethods = projectFromChain.paymentMethods;
-        const projectDocument = await this.projectModel.countDocuments({ id, chainId });
-
-        let project: (Document<unknown, unknown, Project> & Project) | null = null;
-        let requiredSave: boolean = false;
-        if (projectDocument == 0) {
-            project = new this.projectModel({
-                id,
-                chainId,
-                chainUpdateTimestamp: 0,
-                address: projectAddress
-            });
-
-            requiredSave = true;
-        } else {
-            project = (await this.projectModel.findOne({ id, chainId })) ?? null;
-        }
-
-        if (project.chainUpdateTimestamp < projectLastUpdate) {
-            project.$set({
-                chainUpdateTimestamp: projectLastUpdate,
-                paymentMethods: projectPaymentMethods
-            });
-
-            requiredSave = true;
-        }
-
-        if (requiredSave && project != null) {
-            await project.save();
-        }
+        const { project, projectAddress } = await this.getProject(chainId, id);
 
         let isFavorited: boolean = false;
         if (user) {
@@ -405,7 +378,7 @@ export class PortalService {
     }
 
     async getProjectVotes(chainId: number, id: number): Promise<ProjectVotesResponseDto> {
-        const projectFromChain = await this.getProjectFromChain(chainId, id);
+        const projectFromChain = await this.projectService.getProjectById(chainId, id);
         const projectAddress = projectFromChain.id;
 
         const projectPreviousWeeklyVote = await this.subgraphService.projectWeeklyVote(
@@ -451,18 +424,7 @@ export class PortalService {
             );
         }
 
-        const projectCount = await this.projectModel.countDocuments({ id, chainId });
-
-        if (projectCount == 0) {
-            throw new HttpException(
-                {
-                    errors: { message: "Requested project is not found." }
-                },
-                HttpStatus.EXPECTATION_FAILED
-            );
-        }
-
-        const project = await this.projectModel.findOne({ id, chainId });
+        const { project } = await this.getProject(chainId, id);
         const newStatus = typeof project.featured == "boolean" ? !project.featured : true;
 
         project.$set({ featured: newStatus });
@@ -485,18 +447,7 @@ export class PortalService {
             );
         }
 
-        const projectCount = await this.projectModel.countDocuments({ id, chainId });
-
-        if (projectCount == 0) {
-            throw new HttpException(
-                {
-                    errors: { message: "Requested project is not found." }
-                },
-                HttpStatus.EXPECTATION_FAILED
-            );
-        }
-
-        const project = await this.projectModel.findOne({ id, chainId });
+        const { project } = await this.getProject(chainId, id);
         const newStatus = typeof project.portalVerify == "boolean" ? !project.portalVerify : true;
 
         project.$set({ portalVerify: newStatus });
@@ -504,6 +455,59 @@ export class PortalService {
         await project.save();
 
         return true;
+    }
+
+    async requestDomainVerify(
+        chainId: number,
+        id: number,
+        signer: Address
+    ): Promise<RequestDomainVerifyResponseDto> {
+        const { projectOwner } = await this.getProject(chainId, id);
+
+        if (projectOwner != signer) {
+            throw new HttpException(
+                {
+                    errors: { message: "Caller is not owner of project." }
+                },
+                HttpStatus.UNAUTHORIZED
+            );
+        }
+
+        const projectDomainCount = await this.projectDomainModel.countDocuments({ chainId, id });
+        let projectDomain: (Document<unknown, unknown, ProjectDomain> & ProjectDomain) | null =
+            null;
+
+        if (projectDomainCount == 0) {
+            projectDomain = new this.projectDomainModel({
+                chainId,
+                id,
+                domain: "??", // to-do
+                recordKey: `_accesstime-8453-45-${Math.random().toString(36).substring(2, 10)}`,
+                recordValue: `at-${Math.random().toString(36).substring(2, 10)}`
+            });
+
+            await projectDomain.save();
+        } else {
+            projectDomain = await this.projectDomainModel.findOne({ chainId, id });
+        }
+
+        if (projectDomain == null) {
+            throw new HttpException(
+                {
+                    errors: { message: "Project domain verify process creation failed!" }
+                },
+                HttpStatus.FAILED_DEPENDENCY
+            );
+        }
+
+        return {
+            recordKey: projectDomain.recordKey,
+            recordValue: projectDomain.recordValue
+        };
+    }
+
+    async checkDomainVerify(chainId: number, id: number, signer: Address) {
+        return [chainId, id, signer]; // to-do
     }
 
     private async isProjectFavoritedByUser(
@@ -520,18 +524,43 @@ export class PortalService {
         return userFavorite > 0 ? true : false;
     }
 
-    private async getProjectFromChain(chainId: number, id: number) {
-        const projectFromChain = await this.subgraphService.projectById(chainId, id);
+    private async getProject(chainId: number, id: number) {
+        const projectFromChain = await this.projectService.getProjectById(chainId, id);
 
-        if (projectFromChain.length == 0) {
-            throw new HttpException(
-                {
-                    errors: { message: "Requested project is not found." }
-                },
-                HttpStatus.EXPECTATION_FAILED
-            );
+        const projectLastUpdate = Number(projectFromChain.updateTimestamp);
+        const projectOwner = projectFromChain.owner;
+        const projectAddress = projectFromChain.id;
+        const projectPaymentMethods = projectFromChain.paymentMethods;
+        const projectDocument = await this.projectModel.countDocuments({ id, chainId });
+
+        let project: (Document<unknown, unknown, Project> & Project) | null = null;
+        let requiredSave: boolean = false;
+        if (projectDocument == 0) {
+            project = new this.projectModel({
+                id,
+                chainId,
+                chainUpdateTimestamp: 0,
+                address: projectAddress
+            });
+
+            requiredSave = true;
+        } else {
+            project = (await this.projectModel.findOne({ id, chainId })) ?? null;
         }
 
-        return projectFromChain[0];
+        if (project.chainUpdateTimestamp < projectLastUpdate) {
+            project.$set({
+                chainUpdateTimestamp: projectLastUpdate,
+                paymentMethods: projectPaymentMethods
+            });
+
+            requiredSave = true;
+        }
+
+        if (requiredSave && project != null) {
+            await project.save();
+        }
+
+        return { project, projectAddress, projectOwner };
     }
 }
