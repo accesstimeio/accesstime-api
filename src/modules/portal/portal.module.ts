@@ -14,6 +14,7 @@ import { ProjectDomain, ProjectDomainSchema } from "./schemas/portal-domain.sche
 
 import { SubgraphModule } from "../subgraph/subgraph.module";
 import { ProjectModule } from "../project/project.module";
+import { FactoryModule } from "../factory/factory.module";
 
 @Module({
     imports: [
@@ -31,7 +32,8 @@ import { ProjectModule } from "../project/project.module";
                 password: process.env.REDIS_PASSWORD
             })
         }),
-        ProjectModule
+        ProjectModule,
+        FactoryModule
     ],
     controllers: [PortalController],
     providers: [PortalService]

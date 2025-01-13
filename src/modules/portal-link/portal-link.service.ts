@@ -3,14 +3,18 @@ import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import { Chain, extractDomain } from "@accesstimeio/accesstime-common";
 import { Address, decodeAbiParameters, Hash } from "viem";
-import { Factory } from "@accesstimeio/accesstime-sdk";
 
 import { CheckResponseDto, UpdateStatusResponseDto } from "./dto";
 import { Domain } from "./schemas/domain.schema";
 
+import { FactoryService } from "../factory/factory.service";
+
 @Injectable()
 export class PortalLinkService {
-    constructor(@InjectModel(Domain.name) private readonly domainModel: Model<Domain>) {}
+    constructor(
+        @InjectModel(Domain.name) private readonly domainModel: Model<Domain>,
+        private readonly factoryService: FactoryService
+    ) {}
 
     async getCheck(hashedLink: Hash): Promise<CheckResponseDto> {
         let link: string;
@@ -65,7 +69,7 @@ export class PortalLinkService {
             );
         }
 
-        const factory = new Factory({ id: Chain.ids[0] });
+        const factory = this.factoryService.client[Chain.ids[0]];
         const factoryOwner = await factory.read.owner();
 
         if (factoryOwner.toLowerCase() != signer.toLowerCase()) {

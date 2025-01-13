@@ -15,6 +15,7 @@ import { PortalModule } from "./modules/portal/portal.module";
 import { PortalCreatorModule } from "./modules/portal-creator/portal-creator.module";
 import { NestMinioModule } from "nestjs-minio";
 import { PortalLinkModule } from "./modules/portal-link/portal-link.module";
+import { FactoryModule } from "./modules/factory/factory.module";
 
 const NODE_ENV = process.env.NODE_ENV;
 
@@ -96,7 +97,8 @@ const NODE_ENV = process.env.NODE_ENV;
                 accessKey: process.env.MINIO_ACCESS_KEY,
                 secretKey: process.env.MINIO_SECRET_KEY
             })
-        })
+        }),
+        FactoryModule
     ],
     controllers: [AppController],
     providers: [AppService]

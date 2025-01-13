@@ -4,7 +4,6 @@ import { Document, Model } from "mongoose";
 import { Address, isAddress } from "viem";
 import { SUPPORTED_SORT_TYPE, Portal, extractDomain } from "@accesstimeio/accesstime-common";
 import { CACHE_MANAGER, Cache } from "@nestjs/cache-manager";
-import { Factory } from "@accesstimeio/accesstime-sdk";
 
 import { getEpochWeek } from "src/helpers";
 import { RRDA_RESULT } from "src/types/rrda";
@@ -26,6 +25,7 @@ import { ProjectDomain } from "./schemas/portal-domain.schema";
 
 import { SubgraphService } from "../subgraph/subgraph.service";
 import { ProjectService } from "../project/project.service";
+import { FactoryService } from "../factory/factory.service";
 
 interface CacheProject extends ProjectCardDto {
     accessTimeId: number;
@@ -41,7 +41,8 @@ export class PortalService {
         private readonly projectDomainModel: Model<ProjectDomain>,
         private readonly subgraphService: SubgraphService,
         @Inject(CACHE_MANAGER) private cacheService: Cache,
-        private readonly projectService: ProjectService
+        private readonly projectService: ProjectService,
+        private readonly factoryService: FactoryService
     ) {}
 
     async getFeatureds() {
@@ -416,7 +417,7 @@ export class PortalService {
     }
 
     async toggleFeatured(chainId: number, id: number, signer: Address) {
-        const factory = new Factory({ id: chainId });
+        const factory = this.factoryService.client[chainId];
         const factoryOwner = await factory.read.owner();
 
         if (factoryOwner.toLowerCase() != signer.toLowerCase()) {
@@ -440,7 +441,7 @@ export class PortalService {
     }
 
     async togglePortalVerify(chainId: number, id: number, signer: Address) {
-        const factory = new Factory({ id: chainId });
+        const factory = this.factoryService.client[chainId];
         const factoryOwner = await factory.read.owner();
 
         if (factoryOwner.toLowerCase() != signer.toLowerCase()) {
@@ -478,7 +479,7 @@ export class PortalService {
             );
         }
 
-        const factory = new Factory({ id: chainId });
+        const factory = this.factoryService.client[chainId];
         const projectDetails = await factory.read.deploymentDetails([projectAddress]);
         const domain = extractDomain(projectDetails[6]);
 
