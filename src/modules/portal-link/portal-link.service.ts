@@ -43,7 +43,7 @@ export class PortalLinkService {
         const findDomain = await this.domainModel.countDocuments({ domain: useableDomain });
 
         if (findDomain > 0) {
-            const domain = await this.domainModel.findOne({ domain: useableDomain });
+            const domain = await this.domainModel.findOne({ domain: useableDomain }).exec();
 
             return { allowed: domain.allowed };
         }
@@ -103,7 +103,8 @@ export class PortalLinkService {
 
             return { allowed: status };
         } else {
-            const domain = (await this.domainModel.findOne({ domain: useableDomain })) ?? null;
+            const domain =
+                (await this.domainModel.findOne({ domain: useableDomain }).exec()) ?? null;
 
             if (domain != null) {
                 domain.$set({ allowed: status });

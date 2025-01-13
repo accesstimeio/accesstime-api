@@ -2,7 +2,7 @@ import { Inject, Injectable, forwardRef } from "@nestjs/common";
 import { CACHE_MANAGER, Cache } from "@nestjs/cache-manager";
 import { GraphQLClient } from "graphql-request";
 import { Address } from "viem";
-import { Chain } from "@accesstimeio/accesstime-common";
+import { Chain, extractDomain } from "@accesstimeio/accesstime-common";
 
 import {
     SyncResponse,
@@ -31,6 +31,8 @@ import { DeploymentService } from "../deployment/deployment.service";
 import { DeploymentDto, RatesDto } from "../deployment/dto";
 import { ProjectResponseDto } from "../project/dto";
 import { ProjectService } from "../project/project.service";
+import { PortalService } from "../portal/portal.service";
+import { FactoryService } from "../factory/factory.service";
 
 @Injectable()
 export class SubgraphService {
@@ -42,7 +44,10 @@ export class SubgraphService {
         @Inject(forwardRef(() => DeploymentService))
         private readonly deploymentsService: DeploymentService,
         @Inject(forwardRef(() => ProjectService))
-        private readonly projectService: ProjectService
+        private readonly projectService: ProjectService,
+        @Inject(forwardRef(() => PortalService))
+        private readonly portalService: PortalService,
+        private readonly factoryService: FactoryService
     ) {
         const subgraphUrls = process.env.SUBGRAPH_URL.split(",");
         Chain.ids.forEach((chainId, index) => {
@@ -62,6 +67,7 @@ export class SubgraphService {
         try {
             if (!this.syncBusy) {
                 const chainId = 84532; // temporary
+                const factory = this.factoryService.client[chainId];
                 this.syncBusy = true;
                 const result = await this.getClient(chainId).request(SyncDocument);
                 let lastUpdateTimestamp =
@@ -69,8 +75,23 @@ export class SubgraphService {
                 const { accessTimes } = result as { accessTimes: SyncResponse[] };
                 const reversedAccessTimes = accessTimes.reverse();
                 for (const accessTime of reversedAccessTimes) {
-                    const { owner, prevOwner, updateTimestamp, accessTimeId } = accessTime;
+                    const { owner, prevOwner, updateTimestamp, accessTimeId, id } = accessTime;
                     if (BigInt(updateTimestamp) > BigInt(lastUpdateTimestamp)) {
+                        // check domain changes
+                        const [, , , , , , currentDomain] = await factory.read.deploymentDetails([
+                            id
+                        ]);
+                        const projectDomain = await this.portalService.getProjectDomain(
+                            chainId,
+                            Number(accessTimeId)
+                        );
+                        if (projectDomain && projectDomain.domain != extractDomain(currentDomain)) {
+                            await this.portalService.removeDomainVerify(
+                                chainId,
+                                Number(accessTimeId)
+                            );
+                        }
+
                         const lastOwner =
                             (await this.cacheService.get<Address>(
                                 `project-id-${accessTimeId}-owner`
@@ -98,6 +119,11 @@ export class SubgraphService {
                                 chainId,
                                 Number(accessTimeId),
                                 owner
+                            );
+
+                            await this.portalService.removeDomainVerify(
+                                chainId,
+                                Number(accessTimeId)
                             );
                         }
                         // update last update timestamp

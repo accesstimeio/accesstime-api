@@ -1,4 +1,4 @@
-import { MiddlewareConsumer, Module, NestModule, RequestMethod } from "@nestjs/common";
+import { forwardRef, MiddlewareConsumer, Module, NestModule, RequestMethod } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import { CacheModule } from "@nestjs/cache-manager";
 import * as redisStore from "cache-manager-redis-store";
@@ -23,7 +23,7 @@ import { FactoryModule } from "../factory/factory.module";
             { name: ProjectFavorite.name, useFactory: () => ProjectFavoriteSchema },
             { name: ProjectDomain.name, useFactory: () => ProjectDomainSchema }
         ]),
-        SubgraphModule,
+        forwardRef(() => SubgraphModule),
         CacheModule.registerAsync({
             useFactory: () => ({
                 store: redisStore,
@@ -36,7 +36,8 @@ import { FactoryModule } from "../factory/factory.module";
         FactoryModule
     ],
     controllers: [PortalController],
-    providers: [PortalService]
+    providers: [PortalService],
+    exports: [PortalService]
 })
 export class PortalModule implements NestModule {
     configure(consumer: MiddlewareConsumer) {

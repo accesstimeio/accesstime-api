@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Inject, Injectable } from "@nestjs/common";
+import { forwardRef, HttpException, HttpStatus, Inject, Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Document, Model } from "mongoose";
 import { Address, isAddress } from "viem";
@@ -39,6 +39,7 @@ export class PortalService {
         private readonly projectFavoriteModel: Model<ProjectFavorite>,
         @InjectModel(ProjectDomain.name)
         private readonly projectDomainModel: Model<ProjectDomain>,
+        @Inject(forwardRef(() => SubgraphService))
         private readonly subgraphService: SubgraphService,
         @Inject(CACHE_MANAGER) private cacheService: Cache,
         private readonly projectService: ProjectService,
@@ -480,8 +481,8 @@ export class PortalService {
         }
 
         const factory = this.factoryService.client[chainId];
-        const projectDetails = await factory.read.deploymentDetails([projectAddress]);
-        const domain = extractDomain(projectDetails[6]);
+        const [, , , , , , currentDomain] = await factory.read.deploymentDetails([projectAddress]);
+        const domain = extractDomain(currentDomain);
 
         if (domain == null) {
             throw new HttpException(
@@ -507,7 +508,7 @@ export class PortalService {
 
             await projectDomain.save();
         } else {
-            projectDomain = await this.projectDomainModel.findOne({ chainId, id });
+            projectDomain = await this.getProjectDomain(chainId, id);
         }
 
         if (projectDomain == null) {
@@ -553,7 +554,7 @@ export class PortalService {
             );
         }
 
-        const projectDomain = await this.projectDomainModel.findOne({ chainId, id });
+        const projectDomain = await this.getProjectDomain(chainId, id);
 
         try {
             // 1.1.1.1:53 -> cloudflare dns resolver
@@ -579,6 +580,26 @@ export class PortalService {
         } catch (_err) {
             return { status: false };
         }
+    }
+
+    async removeDomainVerify(chainId: number, id: number) {
+        const { project } = await this.getProject(chainId, id);
+
+        const projectDomain = await this.getProjectDomain(chainId, id);
+
+        if (projectDomain) {
+            await projectDomain.deleteOne();
+        }
+
+        if (project.domainVerify == true) {
+            project.$set({ domainVerify: false });
+
+            await project.save();
+        }
+    }
+
+    async getProjectDomain(chainId: number, id: number) {
+        return this.projectDomainModel.findOne({ chainId, id }).exec();
     }
 
     private async isProjectFavoritedByUser(
@@ -616,7 +637,7 @@ export class PortalService {
 
             requiredSave = true;
         } else {
-            project = (await this.projectModel.findOne({ id, chainId })) ?? null;
+            project = (await this.projectModel.findOne({ id, chainId }).exec()) ?? null;
         }
 
         if (project.chainUpdateTimestamp < projectLastUpdate) {
