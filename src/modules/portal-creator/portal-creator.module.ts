@@ -1,5 +1,7 @@
 import { MiddlewareConsumer, Module, NestModule } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
+import { APP_GUARD } from "@nestjs/core";
+import { ThrottlerGuard } from "@nestjs/throttler";
 
 import ChainIdCheckMiddleware from "src/common/middlewares/chain-id-check.middleware";
 import SignatureCheckMiddleware from "src/common/middlewares/signature-check.middleware";
@@ -18,7 +20,13 @@ import { MinioModule } from "../minio/minio.module";
         MinioModule
     ],
     controllers: [PortalCreatorController],
-    providers: [PortalCreatorService]
+    providers: [
+        PortalCreatorService,
+        {
+            provide: APP_GUARD,
+            useClass: ThrottlerGuard
+        }
+    ]
 })
 export class PortalCreatorModule implements NestModule {
     configure(consumer: MiddlewareConsumer) {

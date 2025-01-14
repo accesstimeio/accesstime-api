@@ -2,6 +2,8 @@ import { forwardRef, MiddlewareConsumer, Module, NestModule, RequestMethod } fro
 import { MongooseModule } from "@nestjs/mongoose";
 import { CacheModule } from "@nestjs/cache-manager";
 import * as redisStore from "cache-manager-redis-store";
+import { APP_GUARD } from "@nestjs/core";
+import { ThrottlerGuard } from "@nestjs/throttler";
 
 import ChainIdCheckMiddleware from "src/common/middlewares/chain-id-check.middleware";
 import SignatureCheckMiddleware from "src/common/middlewares/signature-check.middleware";
@@ -36,7 +38,13 @@ import { FactoryModule } from "../factory/factory.module";
         FactoryModule
     ],
     controllers: [PortalController],
-    providers: [PortalService],
+    providers: [
+        PortalService,
+        {
+            provide: APP_GUARD,
+            useClass: ThrottlerGuard
+        }
+    ],
     exports: [PortalService]
 })
 export class PortalModule implements NestModule {

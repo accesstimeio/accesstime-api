@@ -16,6 +16,8 @@ import { PortalCreatorModule } from "./modules/portal-creator/portal-creator.mod
 import { NestMinioModule } from "nestjs-minio";
 import { PortalLinkModule } from "./modules/portal-link/portal-link.module";
 import { FactoryModule } from "./modules/factory/factory.module";
+import { minutes, ThrottlerModule } from "@nestjs/throttler";
+import { ThrottlerStorageRedisService } from "nestjs-throttler-storage-redis";
 
 const NODE_ENV = process.env.NODE_ENV;
 
@@ -98,7 +100,23 @@ const NODE_ENV = process.env.NODE_ENV;
                 secretKey: process.env.MINIO_SECRET_KEY
             })
         }),
-        FactoryModule
+        FactoryModule,
+        ThrottlerModule.forRootAsync({
+            useFactory: () => ({
+                throttlers: [
+                    {
+                        name: "default",
+                        ttl: minutes(1),
+                        limit: 25
+                    }
+                ],
+                storage: new ThrottlerStorageRedisService({
+                    host: process.env.REDIS_HOST,
+                    port: Number(process.env.REDIS_PORT),
+                    password: process.env.REDIS_PASSWORD
+                })
+            })
+        })
     ],
     controllers: [AppController],
     providers: [AppService]

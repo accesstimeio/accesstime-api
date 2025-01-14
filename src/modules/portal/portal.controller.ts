@@ -2,6 +2,7 @@ import { Controller, Get, Param, Post, Query, UsePipes, ValidationPipe } from "@
 import { ApiHeaders, ApiQuery, ApiResponse } from "@nestjs/swagger";
 import { Address } from "viem";
 import { SUPPORTED_SORT_TYPE } from "@accesstimeio/accesstime-common";
+import { days, minutes, Throttle } from "@nestjs/throttler";
 
 import { Signer } from "src/decorators/signer.decorator";
 
@@ -134,6 +135,7 @@ export class PortalController {
     @ApiResponse({
         type: ProjectToggleFavoriteResponseDto
     })
+    @Throttle({ default: { limit: 10, ttl: days(1) } })
     @Post("/project/:chainId/:id/toggle-favorite")
     toggleFavorite(
         @Param("chainId") chainId: number,
@@ -202,6 +204,7 @@ export class PortalController {
     @ApiResponse({
         type: RequestDomainVerifyResponseDto
     })
+    @Throttle({ default: { limit: 10, ttl: minutes(5) } })
     @Post("/project/:chainId/:id/request-domain-verify")
     requestDomainVerify(
         @Param("chainId") chainId: number,
@@ -224,6 +227,7 @@ export class PortalController {
     @ApiResponse({
         type: CheckDomainVerifyResponseDto
     })
+    @Throttle({ default: { limit: 10, ttl: days(1) } })
     @Post("/project/:chainId/:id/check-domain-verify")
     checkDomainVerify(
         @Param("chainId") chainId: number,
