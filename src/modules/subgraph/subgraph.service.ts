@@ -320,13 +320,13 @@ export class SubgraphService {
     ): Promise<number> {
         try {
             paymentMethods ??= [];
-            // to-do: CountWeeklyVoteProjectsDocument need to be filtered with paymentMethods
             const result = await this.getClient(chainId).request(CountWeeklyVoteProjectsDocument, {
-                epochWeek: epochWeek.toString()
+                epochWeek: epochWeek.toString(),
+                paymentMethods
             });
-            const { weeklyVote } = result as { weeklyVote: CountWeeklyVoteProjectsResponse };
+            const { weeklyVotes } = result as { weeklyVotes: CountWeeklyVoteProjectsResponse };
 
-            return weeklyVote == null ? 0 : Number(weeklyVote.participantCount);
+            return weeklyVotes == null ? 0 : Number(weeklyVotes[0].accessTimes.length);
         } catch (_err) {
             throw new Error("[countProjects]: Subgraph query failed!");
         }

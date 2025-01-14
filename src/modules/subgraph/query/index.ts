@@ -208,13 +208,15 @@ export const ProjectWeeklyVoteDocument = gql`
 `;
 
 export type CountWeeklyVoteProjectsResponse = {
-    participantCount: string;
+    accessTimes: { paymentMethods: Address[] }[];
 };
 
 export const CountWeeklyVoteProjectsDocument = gql`
-    query CountWeeklyVoteProjects($epochWeek: String!) {
-        weeklyVote(id: $epochWeek) {
-            participantCount
+    query CountWeeklyVoteProjects($epochWeek: String!, $paymentMethods: [Bytes!]) {
+        weeklyVotes(where: { id: $epochWeek }) {
+            accessTimes(where: { paymentMethods_contains: $paymentMethods }) {
+                paymentMethods
+            }
         }
     }
 `;
