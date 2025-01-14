@@ -65,29 +65,6 @@ export class DeploymentService {
             );
         }
 
-        const deploymentCount = Number(
-            (await this.subgraphService.countDeployments(chainId, address)).deploymentCount
-        );
-        const limit = Number(process.env.PAGE_ITEM_LIMIT);
-        const requestable =
-            limit - ((requestedPage + 1) * limit - deploymentCount) > 0 ? true : false;
-
-        if (!requestable) {
-            if (requestedPage == 0) {
-                return {
-                    page: 0,
-                    maxPage: 0,
-                    deployments: []
-                };
-            }
-            throw new HttpException(
-                {
-                    errors: { message: "Requested page exceeds page limit." }
-                },
-                HttpStatus.EXPECTATION_FAILED
-            );
-        }
-
         const dataKey = `${chainId}-${address.toLowerCase()}-deployments-page-${requestedPage}`;
 
         const cachedData = await this.cacheService.get<ListDeploymentResponseDto>(dataKey);
@@ -95,6 +72,29 @@ export class DeploymentService {
         if (cachedData) {
             return cachedData;
         } else {
+            const deploymentCount = Number(
+                (await this.subgraphService.countDeployments(chainId, address)).deploymentCount
+            );
+            const limit = Number(process.env.PAGE_ITEM_LIMIT);
+            const requestable =
+                limit - ((requestedPage + 1) * limit - deploymentCount) > 0 ? true : false;
+
+            if (!requestable) {
+                if (requestedPage == 0) {
+                    return {
+                        page: 0,
+                        maxPage: 0,
+                        deployments: []
+                    };
+                }
+                throw new HttpException(
+                    {
+                        errors: { message: "Requested page exceeds page limit." }
+                    },
+                    HttpStatus.EXPECTATION_FAILED
+                );
+            }
+
             const listDeployments = await this.subgraphService.listDeployments(
                 chainId,
                 address,
