@@ -1,8 +1,9 @@
-import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
+import { HttpException, HttpStatus, Inject, Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
 import { Chain, extractDomain } from "@accesstimeio/accesstime-common";
-import { Address, decodeAbiParameters, Hash } from "viem";
+import { Address, decodeAbiParameters, Hash, keccak256 } from "viem";
+import { CACHE_MANAGER, Cache } from "@nestjs/cache-manager";
 
 import { CheckResponseDto, UpdateStatusResponseDto } from "./dto";
 import { Domain } from "./schemas/domain.schema";
@@ -13,42 +14,59 @@ import { FactoryService } from "../factory/factory.service";
 export class PortalLinkService {
     constructor(
         @InjectModel(Domain.name) private readonly domainModel: Model<Domain>,
-        private readonly factoryService: FactoryService
+        private readonly factoryService: FactoryService,
+        @Inject(CACHE_MANAGER) private cacheService: Cache
     ) {}
 
     async getCheck(hashedLink: Hash): Promise<CheckResponseDto> {
-        let link: string;
-        try {
-            const [decodedLink] = decodeAbiParameters([{ type: "string" }], hashedLink);
-            link = decodedLink;
-        } catch (_err) {
-            throw new HttpException(
+        const dataKey = `link-${keccak256(hashedLink)}`;
+        const cachedData = await this.cacheService.get<{ allowed: boolean }>(dataKey);
+
+        if (cachedData) {
+            return cachedData;
+        } else {
+            let link: string;
+            try {
+                const [decodedLink] = decodeAbiParameters([{ type: "string" }], hashedLink);
+                link = decodedLink;
+            } catch (_err) {
+                throw new HttpException(
+                    {
+                        errors: { message: "Given link is not hashed correctly." }
+                    },
+                    HttpStatus.BAD_REQUEST
+                );
+            }
+
+            const useableDomain = extractDomain(link);
+            if (useableDomain == null) {
+                throw new HttpException(
+                    {
+                        errors: { message: "Domain is not found in given link." }
+                    },
+                    HttpStatus.BAD_REQUEST
+                );
+            }
+
+            const findDomain = await this.domainModel.countDocuments({ domain: useableDomain });
+            let allowed: boolean = true;
+
+            if (findDomain > 0) {
+                const domain = await this.domainModel.findOne({ domain: useableDomain }).exec();
+
+                allowed = domain.allowed;
+            }
+
+            await this.cacheService.set(
+                dataKey,
+                { allowed },
                 {
-                    errors: { message: "Given link is not hashed correctly." }
-                },
-                HttpStatus.BAD_REQUEST
+                    ttl: Number(process.env.RATES_TTL)
+                }
             );
+
+            return { allowed };
         }
-
-        const useableDomain = extractDomain(link);
-        if (useableDomain == null) {
-            throw new HttpException(
-                {
-                    errors: { message: "Domain is not found in given link." }
-                },
-                HttpStatus.BAD_REQUEST
-            );
-        }
-
-        const findDomain = await this.domainModel.countDocuments({ domain: useableDomain });
-
-        if (findDomain > 0) {
-            const domain = await this.domainModel.findOne({ domain: useableDomain }).exec();
-
-            return { allowed: domain.allowed };
-        }
-
-        return { allowed: true };
     }
 
     async updateStatus(
@@ -100,6 +118,7 @@ export class PortalLinkService {
             });
 
             await domain.save();
+            await this.removeCachedLink(hashedLink);
 
             return { allowed: status };
         } else {
@@ -109,11 +128,17 @@ export class PortalLinkService {
             if (domain != null) {
                 domain.$set({ allowed: status });
                 await domain.save();
+                await this.removeCachedLink(hashedLink);
 
                 return { allowed: status };
             }
 
             return { allowed: null };
         }
+    }
+
+    private async removeCachedLink(hashedLink: Hash) {
+        const dataKey = `link-${keccak256(hashedLink)}`;
+        await this.cacheService.del(dataKey);
     }
 }
