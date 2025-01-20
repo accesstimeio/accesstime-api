@@ -4,6 +4,8 @@ import { GraphQLClient } from "graphql-request";
 import { Address } from "viem";
 import { Chain, extractDomain } from "@accesstimeio/accesstime-common";
 
+import { SUBGRAPH_TYPE, SUPPORTED_SUBGRAPH_TYPES } from "src/common";
+
 import {
     SyncResponse,
     CountDeploymentsResponse,
@@ -25,7 +27,29 @@ import {
     CountProjectsDocument,
     CountWeeklyVoteProjectsDocument,
     CountWeeklyVoteProjectsResponse
-} from "./query";
+} from "./query/thegraph";
+
+import {
+    CountDeploymentsResponse as pCountDeploymentsResponse,
+    RatesDocument as pRatesDocument,
+    // CountProjectsResponse as pCountProjectsResponse,
+    LastDeploymentsDocument as pLastDeploymentsDocument,
+    // ListDeploymentsDocument as pListDeploymentsDocument,
+    CountDeploymentsDocument as pCountDeploymentsDocument,
+    SyncDocument as pSyncDocument,
+    ProjectByIdDocument as pProjectByIdDocument,
+    // NewestProjectsResponse as pNewestProjectsResponse,
+    // NewestProjectsDocument as pNewestProjectsDocument,
+    // TopRatedProjectsResponse as pTopRatedProjectsResponse,
+    // TopRatedProjectsDocument as pTopRatedProjectsDocument,
+    // WeeklyPopularProjectsResponse as pWeeklyPopularProjectsResponse,
+    // WeeklyPopularProjectsDocument as pWeeklyPopularProjectsDocument,
+    ProjectWeeklyVoteDocument as pProjectWeeklyVoteDocument,
+    ProjectWeeklyVoteResponse as pProjectWeeklyVoteResponse
+    // CountProjectsDocument as pCountProjectsDocument,
+    // CountWeeklyVoteProjectsDocument as pCountWeeklyVoteProjectsDocument,
+    // CountWeeklyVoteProjectsResponse as pCountWeeklyVoteProjectsResponse,
+} from "./query/ponder";
 
 import { DeploymentService } from "../deployment/deployment.service";
 import { DeploymentDto, RatesDto } from "../deployment/dto";
@@ -34,10 +58,19 @@ import { ProjectService } from "../project/project.service";
 import { PortalService } from "../portal/portal.service";
 import { FactoryService } from "../factory/factory.service";
 
+interface pProjectResponseDto extends Omit<ProjectResponseDto, "paymentMethods"> {
+    rates: {
+        items: {
+            token: Address;
+        }[];
+    };
+}
+
 @Injectable()
 export class SubgraphService {
     private client: { [key: number]: GraphQLClient | null } = {};
     private clientUrls: { [key: number]: string } = {};
+    private clientTypes: { [key: number]: SUBGRAPH_TYPE } = {};
     private syncBusy: boolean = false;
     constructor(
         @Inject(CACHE_MANAGER) private cacheService: Cache,
@@ -50,9 +83,20 @@ export class SubgraphService {
         private readonly factoryService: FactoryService
     ) {
         const subgraphUrls = process.env.SUBGRAPH_URL.split(",");
+        const subgraphTypes = process.env.SUBGRAPH_TYPE.split(",");
+
         Chain.ids.forEach((chainId, index) => {
+            if (
+                !subgraphUrls[index] ||
+                !subgraphTypes[index] ||
+                !SUPPORTED_SUBGRAPH_TYPES.includes(subgraphTypes[index] as SUBGRAPH_TYPE)
+            ) {
+                throw new Error("Subgraph config is invalid!");
+            }
+
             this.client[chainId] = null;
             this.clientUrls[chainId] = subgraphUrls[index];
+            this.clientTypes[chainId] = subgraphTypes[index] as SUBGRAPH_TYPE;
         });
     }
 
@@ -63,17 +107,36 @@ export class SubgraphService {
         return this.client[chainId];
     }
 
+    private async syncCall(chainId: number) {
+        switch (this.clientTypes[chainId]) {
+            case "thegraph":
+                const result = await this.getClient(chainId).request(SyncDocument);
+                const { accessTimes } = result as { accessTimes: SyncResponse[] };
+                return accessTimes.reverse();
+            case "ponder":
+                const presult = await this.getClient(chainId).request(pSyncDocument);
+                const { data } = presult as {
+                    data: { accessTimes: { items: SyncResponse[] } };
+                };
+                return Array.isArray(data.accessTimes.items)
+                    ? data.accessTimes.items.reverse()
+                    : [];
+            default:
+                return [];
+        }
+    }
+
     async sync() {
         try {
             if (!this.syncBusy) {
                 const chainId = 84532; // temporary
                 const factory = this.factoryService.client[chainId];
                 this.syncBusy = true;
-                const result = await this.getClient(chainId).request(SyncDocument);
+
+                const reversedAccessTimes = await this.syncCall(chainId);
+
                 let lastUpdateTimestamp =
                     (await this.cacheService.get<string>("lastUpdateTimestamp")) ?? "0";
-                const { accessTimes } = result as { accessTimes: SyncResponse[] };
-                const reversedAccessTimes = accessTimes.reverse();
                 for (const accessTime of reversedAccessTimes) {
                     const { owner, prevOwner, updateTimestamp, accessTimeId, id } = accessTime;
                     if (BigInt(updateTimestamp) > BigInt(lastUpdateTimestamp)) {
@@ -143,13 +206,31 @@ export class SubgraphService {
 
     async lastDeployments(chainId: number, address: Address) {
         try {
-            const result = await this.getClient(chainId).request(LastDeploymentsDocument, {
-                owner: address,
-                limit: Number(process.env.LAST_DEPLOYMENTS_LIMIT)
-            });
-            const { accessTimes } = result as { accessTimes: DeploymentDto[] };
+            switch (this.clientTypes[chainId]) {
+                case "thegraph":
+                    const result = await this.getClient(chainId).request(LastDeploymentsDocument, {
+                        owner: address,
+                        limit: Number(process.env.LAST_DEPLOYMENTS_LIMIT)
+                    });
+                    const { accessTimes } = result as { accessTimes: DeploymentDto[] };
 
-            return accessTimes;
+                    return accessTimes;
+                case "ponder":
+                    const presult = await this.getClient(chainId).request(
+                        pLastDeploymentsDocument,
+                        {
+                            owner: address,
+                            limit: Number(process.env.LAST_DEPLOYMENTS_LIMIT)
+                        }
+                    );
+                    const { data } = presult as {
+                        data: { accessTimes: { items: DeploymentDto[] } };
+                    };
+
+                    return Array.isArray(data.accessTimes.items) ? data.accessTimes.items : [];
+                default:
+                    return [];
+            }
         } catch (_err) {
             throw new Error("[lastDeployments]: Subgraph query failed!");
         }
@@ -159,14 +240,20 @@ export class SubgraphService {
         try {
             const limit = Number(process.env.PAGE_ITEM_LIMIT);
             const skip = page ? page * limit : 0;
-            const result = await this.getClient(chainId).request(ListDeploymentsDocument, {
-                owner: address,
-                limit,
-                skip
-            });
-            const { accessTimes } = result as { accessTimes: DeploymentDto[] };
 
-            return accessTimes;
+            switch (this.clientTypes[chainId]) {
+                case "thegraph":
+                    const result = await this.getClient(chainId).request(ListDeploymentsDocument, {
+                        owner: address,
+                        limit,
+                        skip
+                    });
+                    const { accessTimes } = result as { accessTimes: DeploymentDto[] };
+
+                    return accessTimes;
+                default:
+                    []; // to-do, ponder case
+            }
         } catch (_err) {
             throw new Error("[listDeployments]: Subgraph query failed!");
         }
@@ -174,12 +261,31 @@ export class SubgraphService {
 
     async countDeployments(chainId: number, address: Address): Promise<CountDeploymentsResponse> {
         try {
-            const result = await this.getClient(chainId).request(CountDeploymentsDocument, {
-                owner: address
-            });
-            const { owner } = result as { owner: CountDeploymentsResponse };
+            switch (this.clientTypes[chainId]) {
+                case "thegraph":
+                    const result = await this.getClient(chainId).request(CountDeploymentsDocument, {
+                        owner: address
+                    });
+                    const { owner } = result as { owner: CountDeploymentsResponse };
 
-            return owner == null ? { deploymentCount: "0" } : owner;
+                    return owner == null ? { deploymentCount: "0" } : owner;
+                case "ponder":
+                    const presult = await this.getClient(chainId).request(
+                        pCountDeploymentsDocument,
+                        {
+                            owner: address
+                        }
+                    );
+                    const { data } = presult as {
+                        data: { owner: pCountDeploymentsResponse };
+                    };
+
+                    return data.owner == null
+                        ? { deploymentCount: "0" }
+                        : { deploymentCount: data.owner.deploymentCount.toString() };
+                default:
+                    return { deploymentCount: "0" };
+            }
         } catch (_err) {
             throw new Error("[countDeployments]: Subgraph query failed!");
         }
@@ -187,12 +293,51 @@ export class SubgraphService {
 
     async projectById(chainId: number, id: number) {
         try {
-            const result = await this.getClient(chainId).request(ProjectByIdDocument, {
-                id
-            });
-            const { accessTimes } = result as { accessTimes: ProjectResponseDto[] };
+            switch (this.clientTypes[chainId]) {
+                case "thegraph":
+                    const result = await this.getClient(chainId).request(ProjectByIdDocument, {
+                        id
+                    });
+                    const { accessTimes } = result as { accessTimes: ProjectResponseDto[] };
 
-            return accessTimes;
+                    return accessTimes;
+                case "ponder":
+                    const presult = await this.getClient(chainId).request(pProjectByIdDocument, {
+                        id
+                    });
+                    const { data } = presult as {
+                        data: { accessTimes: { items: pProjectResponseDto[] } };
+                    };
+
+                    if (
+                        Array.isArray(data.accessTimes.items) &&
+                        data.accessTimes.items.length > 0
+                    ) {
+                        const accessTime = data.accessTimes.items[0];
+
+                        const paccessTimes: ProjectResponseDto[] = [];
+
+                        paccessTimes.push({
+                            id: accessTime.id,
+                            extraTimes: accessTime.extraTimes,
+                            removedExtraTimes: accessTime.removedExtraTimes,
+                            nextOwner: accessTime.nextOwner,
+                            owner: accessTime.owner,
+                            packages: accessTime.packages,
+                            removedPackages: accessTime.removedPackages,
+                            paymentMethods: accessTime.rates.items.map((rate) => rate.token),
+                            paused: accessTime.paused,
+                            prevOwner: accessTime.prevOwner,
+                            updateTimestamp: accessTime.updateTimestamp
+                        });
+
+                        return paccessTimes;
+                    } else {
+                        return [];
+                    }
+                default:
+                    return [];
+            }
         } catch (_err) {
             throw new Error("[projectById]: Subgraph query failed!");
         }
@@ -200,10 +345,22 @@ export class SubgraphService {
 
     async rates(chainId: number): Promise<RatesDto[]> {
         try {
-            const result = await this.getClient(chainId).request(RatesDocument, {});
-            const { factoryRates } = result as { factoryRates: RatesDto[] };
+            switch (this.clientTypes[chainId]) {
+                case "thegraph":
+                    const result = await this.getClient(chainId).request(RatesDocument, {});
+                    const { factoryRates } = result as { factoryRates: RatesDto[] };
 
-            return factoryRates == null ? [] : factoryRates;
+                    return factoryRates == null ? [] : factoryRates;
+                case "ponder":
+                    const presult = await this.getClient(chainId).request(pRatesDocument, {});
+                    const { data } = presult as {
+                        data: { factoryRates: { items: RatesDto[] } };
+                    };
+
+                    return Array.isArray(data.factoryRates.items) ? data.factoryRates.items : [];
+                default:
+                    return [];
+            }
         } catch (_err) {
             throw new Error("[rates]: Subgraph query failed!");
         }
@@ -212,16 +369,22 @@ export class SubgraphService {
     async countProjects(chainId: number, paymentMethods?: Address[]): Promise<number> {
         try {
             paymentMethods ??= [];
-            const result = await this.getClient(chainId).request(CountProjectsDocument, {
-                paymentMethods
-            });
-            const { accessTimes } = result as { accessTimes: CountProjectsResponse[] };
 
-            return accessTimes == null
-                ? 0
-                : accessTimes.length != 0
-                  ? Number(accessTimes[0].accessTimeId) + 1
-                  : 0;
+            switch (this.clientTypes[chainId]) {
+                case "thegraph":
+                    const result = await this.getClient(chainId).request(CountProjectsDocument, {
+                        paymentMethods
+                    });
+                    const { accessTimes } = result as { accessTimes: CountProjectsResponse[] };
+
+                    return accessTimes == null
+                        ? 0
+                        : accessTimes.length != 0
+                          ? Number(accessTimes[0].accessTimeId) + 1
+                          : 0;
+                default:
+                    return 0; // to-do, ponder case
+            }
         } catch (_err) {
             throw new Error("[countProjects]: Subgraph query failed!");
         }
@@ -236,14 +399,20 @@ export class SubgraphService {
             const limit = Number(process.env.PAGE_ITEM_LIMIT);
             const skip = page ? (page - 1) * limit : 0;
             paymentMethods ??= [];
-            const result = await this.getClient(chainId).request(NewestProjectsDocument, {
-                limit,
-                skip,
-                paymentMethods
-            });
-            const { accessTimes } = result as { accessTimes: NewestProjectsResponse[] };
 
-            return accessTimes == null ? [] : accessTimes;
+            switch (this.clientTypes[chainId]) {
+                case "thegraph":
+                    const result = await this.getClient(chainId).request(NewestProjectsDocument, {
+                        limit,
+                        skip,
+                        paymentMethods
+                    });
+                    const { accessTimes } = result as { accessTimes: NewestProjectsResponse[] };
+
+                    return accessTimes == null ? [] : accessTimes;
+                default:
+                    return []; // to-do, ponder case
+            }
         } catch (_err) {
             throw new Error("[newestProjects]: Subgraph query failed!");
         }
@@ -258,14 +427,20 @@ export class SubgraphService {
             const limit = Number(process.env.PAGE_ITEM_LIMIT);
             const skip = page ? (page - 1) * limit : 0;
             paymentMethods ??= [];
-            const result = await this.getClient(chainId).request(TopRatedProjectsDocument, {
-                limit,
-                skip,
-                paymentMethods
-            });
-            const { accessTimes } = result as { accessTimes: TopRatedProjectsResponse[] };
 
-            return accessTimes == null ? [] : accessTimes;
+            switch (this.clientTypes[chainId]) {
+                case "thegraph":
+                    const result = await this.getClient(chainId).request(TopRatedProjectsDocument, {
+                        limit,
+                        skip,
+                        paymentMethods
+                    });
+                    const { accessTimes } = result as { accessTimes: TopRatedProjectsResponse[] };
+
+                    return accessTimes == null ? [] : accessTimes;
+                default:
+                    return []; // to-do, ponder case
+            }
         } catch (_err) {
             throw new Error("[topRatedProjects]: Subgraph query failed!");
         }
@@ -281,15 +456,26 @@ export class SubgraphService {
             const limit = Number(process.env.PAGE_ITEM_LIMIT);
             const skip = page ? (page - 1) * limit : 0;
             paymentMethods ??= [];
-            const result = await this.getClient(chainId).request(WeeklyPopularProjectsDocument, {
-                epochWeek,
-                limit,
-                skip,
-                paymentMethods
-            });
-            const { accessVotes } = result as { accessVotes: WeeklyPopularProjectsResponse[] };
 
-            return accessVotes == null ? [] : accessVotes;
+            switch (this.clientTypes[chainId]) {
+                case "thegraph":
+                    const result = await this.getClient(chainId).request(
+                        WeeklyPopularProjectsDocument,
+                        {
+                            epochWeek,
+                            limit,
+                            skip,
+                            paymentMethods
+                        }
+                    );
+                    const { accessVotes } = result as {
+                        accessVotes: WeeklyPopularProjectsResponse[];
+                    };
+
+                    return accessVotes == null ? [] : accessVotes;
+                default:
+                    return []; // to-do, ponder case
+            }
         } catch (_err) {
             throw new Error("[weeklyPopularProjects]: Subgraph query failed!");
         }
@@ -301,13 +487,47 @@ export class SubgraphService {
         accessTime: Address
     ): Promise<ProjectWeeklyVoteResponse[]> {
         try {
-            const result = await this.getClient(chainId).request(ProjectWeeklyVoteDocument, {
-                epochWeek,
-                accessTime
-            });
-            const { accessVotes } = result as { accessVotes: ProjectWeeklyVoteResponse[] };
+            switch (this.clientTypes[chainId]) {
+                case "thegraph":
+                    const result = await this.getClient(chainId).request(
+                        ProjectWeeklyVoteDocument,
+                        {
+                            epochWeek,
+                            accessTime
+                        }
+                    );
+                    const { accessVotes } = result as {
+                        accessVotes: ProjectWeeklyVoteResponse[];
+                    };
 
-            return accessVotes == null ? [] : accessVotes;
+                    return accessVotes == null ? [] : accessVotes;
+                case "ponder":
+                    const presult = await this.getClient(chainId).request(
+                        pProjectWeeklyVoteDocument,
+                        {
+                            epochWeek,
+                            accessTime
+                        }
+                    );
+                    const { data } = presult as {
+                        data: {
+                            accessVotes: {
+                                items: pProjectWeeklyVoteResponse[];
+                            };
+                        };
+                    };
+
+                    if (Array.isArray(data.accessVotes.items)) {
+                        return data.accessVotes.items.map((item) => ({
+                            participantCount: item.participantCount.toString(),
+                            votePoint: item.votePoint
+                        }));
+                    } else {
+                        return [];
+                    }
+                default:
+                    return [];
+            }
         } catch (_err) {
             throw new Error("[projectWeeklyVote]: Subgraph query failed!");
         }
@@ -320,13 +540,24 @@ export class SubgraphService {
     ): Promise<number> {
         try {
             paymentMethods ??= [];
-            const result = await this.getClient(chainId).request(CountWeeklyVoteProjectsDocument, {
-                epochWeek: epochWeek.toString(),
-                paymentMethods
-            });
-            const { weeklyVotes } = result as { weeklyVotes: CountWeeklyVoteProjectsResponse };
 
-            return weeklyVotes == null ? 0 : Number(weeklyVotes[0].accessTimes.length);
+            switch (this.clientTypes[chainId]) {
+                case "thegraph":
+                    const result = await this.getClient(chainId).request(
+                        CountWeeklyVoteProjectsDocument,
+                        {
+                            epochWeek: epochWeek.toString(),
+                            paymentMethods
+                        }
+                    );
+                    const { weeklyVotes } = result as {
+                        weeklyVotes: CountWeeklyVoteProjectsResponse;
+                    };
+
+                    return weeklyVotes == null ? 0 : Number(weeklyVotes[0].accessTimes.length);
+                default:
+                    return 0; // to-do, ponder case
+            }
         } catch (_err) {
             throw new Error("[countProjects]: Subgraph query failed!");
         }
