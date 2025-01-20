@@ -97,37 +97,32 @@ export const RatesDocument = gql`
 `;
 
 export type CountProjectsResponse = {
-    accessTimeId: string;
+    totalCount: number;
 };
 
 export const CountProjectsDocument = gql`
-    query CountProjects($paymentMethods: [String!]) {
-        accessTimes(
-            orderDirection: desc
-            orderBy: accessTimeId
-            limit: 1
-            where: { paymentMethods_contains: $paymentMethods }
-        ) {
-            accessTimeId
+    query CountProjects($filter: accessTimeFilter!) {
+        accessTimes(where: $filter) {
+            totalCount
         }
     }
-`; // to-do, filtering issue
+`;
 
 export interface NewestProjectsResponse {
     id: Address;
     accessTimeId: string;
     totalVotePoint: string;
-    totalVoteParticipantCount: string;
+    totalVoteParticipantCount: number;
 }
 
 export const NewestProjectsDocument = gql`
-    query NewestProjects($limit: Int!, $skip: Int!, $paymentMethods: [String!]) {
+    query NewestProjects($limit: Int!, $after: String, $filter: accessTimeFilter!) {
         accessTimes(
-            orderDirection: desc
-            orderBy: accessTimeId
+            orderDirection: "desc"
+            orderBy: "accessTimeId"
             limit: $limit
-            skip: $skip
-            where: { paymentMethods_contains: $paymentMethods }
+            after: $after
+            where: $filter
         ) {
             id
             accessTimeId
@@ -135,18 +130,18 @@ export const NewestProjectsDocument = gql`
             totalVoteParticipantCount
         }
     }
-`; // to-do, pagination issue - filtering issue
+`; // to-do, pagination issue
 
 export interface TopRatedProjectsResponse extends NewestProjectsResponse {}
 
 export const TopRatedProjectsDocument = gql`
-    query TopRatedProjects($limit: Int!, $skip: Int!, $paymentMethods: [String!]) {
+    query TopRatedProjects($limit: Int!, $after: String, $filter: accessTimeFilter!) {
         accessTimes(
-            orderDirection: desc
-            orderBy: totalVotePoint
+            orderDirection: "desc"
+            orderBy: "totalVotePoint"
             limit: $limit
-            skip: $skip
-            where: { paymentMethods_contains: $paymentMethods }
+            after: $after
+            where: $filter
         ) {
             id
             accessTimeId
@@ -154,7 +149,7 @@ export const TopRatedProjectsDocument = gql`
             totalVoteParticipantCount
         }
     }
-`; // to-do, pagination issue - filtering issue
+`; // to-do, pagination issue
 
 export type WeeklyPopularProjectsResponse = {
     accessTime: {

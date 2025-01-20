@@ -32,21 +32,21 @@ import {
 import {
     CountDeploymentsResponse as pCountDeploymentsResponse,
     RatesDocument as pRatesDocument,
-    // CountProjectsResponse as pCountProjectsResponse,
+    CountProjectsResponse as pCountProjectsResponse,
     LastDeploymentsDocument as pLastDeploymentsDocument,
     // ListDeploymentsDocument as pListDeploymentsDocument,
     CountDeploymentsDocument as pCountDeploymentsDocument,
     SyncDocument as pSyncDocument,
     ProjectByIdDocument as pProjectByIdDocument,
-    // NewestProjectsResponse as pNewestProjectsResponse,
-    // NewestProjectsDocument as pNewestProjectsDocument,
-    // TopRatedProjectsResponse as pTopRatedProjectsResponse,
-    // TopRatedProjectsDocument as pTopRatedProjectsDocument,
+    NewestProjectsResponse as pNewestProjectsResponse,
+    NewestProjectsDocument as pNewestProjectsDocument,
+    TopRatedProjectsResponse as pTopRatedProjectsResponse,
+    TopRatedProjectsDocument as pTopRatedProjectsDocument,
     // WeeklyPopularProjectsResponse as pWeeklyPopularProjectsResponse,
     // WeeklyPopularProjectsDocument as pWeeklyPopularProjectsDocument,
     ProjectWeeklyVoteDocument as pProjectWeeklyVoteDocument,
-    ProjectWeeklyVoteResponse as pProjectWeeklyVoteResponse
-    // CountProjectsDocument as pCountProjectsDocument,
+    ProjectWeeklyVoteResponse as pProjectWeeklyVoteResponse,
+    CountProjectsDocument as pCountProjectsDocument
     // CountWeeklyVoteProjectsDocument as pCountWeeklyVoteProjectsDocument,
     // CountWeeklyVoteProjectsResponse as pCountWeeklyVoteProjectsResponse,
 } from "./query/ponder";
@@ -118,7 +118,7 @@ export class SubgraphService {
                 const { data } = presult as {
                     data: { accessTimes: { items: SyncResponse[] } };
                 };
-                return Array.isArray(data.accessTimes.items)
+                return Array.isArray(data?.accessTimes?.items)
                     ? data.accessTimes.items.reverse()
                     : [];
             default:
@@ -227,7 +227,7 @@ export class SubgraphService {
                         data: { accessTimes: { items: DeploymentDto[] } };
                     };
 
-                    return Array.isArray(data.accessTimes.items) ? data.accessTimes.items : [];
+                    return Array.isArray(data?.accessTimes?.items) ? data.accessTimes.items : [];
                 default:
                     return [];
             }
@@ -310,7 +310,7 @@ export class SubgraphService {
                     };
 
                     if (
-                        Array.isArray(data.accessTimes.items) &&
+                        Array.isArray(data?.accessTimes?.items) &&
                         data.accessTimes.items.length > 0
                     ) {
                         const accessTime = data.accessTimes.items[0];
@@ -357,7 +357,7 @@ export class SubgraphService {
                         data: { factoryRates: { items: RatesDto[] } };
                     };
 
-                    return Array.isArray(data.factoryRates.items) ? data.factoryRates.items : [];
+                    return Array.isArray(data?.factoryRates?.items) ? data.factoryRates.items : [];
                 default:
                     return [];
             }
@@ -377,13 +377,30 @@ export class SubgraphService {
                     });
                     const { accessTimes } = result as { accessTimes: CountProjectsResponse[] };
 
-                    return accessTimes == null
+                    return paymentMethods.length == 0 || accessTimes == null
                         ? 0
                         : accessTimes.length != 0
                           ? Number(accessTimes[0].accessTimeId) + 1
                           : 0;
+                case "ponder":
+                    const presult = await this.getClient(chainId).request(pCountProjectsDocument, {
+                        // eslint-disable-next-line prettier/prettier
+                        filter: { "AND": paymentMethods.map((paymentMethod) => (
+                            {
+                                // eslint-disable-next-line prettier/prettier
+                                "paymentMethods_has": paymentMethod
+                            }))
+                        }
+                    });
+                    const { data } = presult as { data: { accessTimes: pCountProjectsResponse } };
+
+                    if (data?.accessTimes?.totalCount) {
+                        return data.accessTimes.totalCount;
+                    } else {
+                        return 0;
+                    }
                 default:
-                    return 0; // to-do, ponder case
+                    return 0;
             }
         } catch (_err) {
             throw new Error("[countProjects]: Subgraph query failed!");
@@ -393,12 +410,14 @@ export class SubgraphService {
     async newestProjects(
         chainId: number,
         page?: number,
-        paymentMethods?: Address[]
+        paymentMethods?: Address[],
+        ponderPageCursor?: string | null
     ): Promise<NewestProjectsResponse[]> {
         try {
             const limit = Number(process.env.PAGE_ITEM_LIMIT);
             const skip = page ? (page - 1) * limit : 0;
             paymentMethods ??= [];
+            ponderPageCursor ??= null;
 
             switch (this.clientTypes[chainId]) {
                 case "thegraph":
@@ -410,8 +429,34 @@ export class SubgraphService {
                     const { accessTimes } = result as { accessTimes: NewestProjectsResponse[] };
 
                     return accessTimes == null ? [] : accessTimes;
+                case "ponder":
+                    const presult = await this.getClient(chainId).request(pNewestProjectsDocument, {
+                        limit,
+                        after: ponderPageCursor,
+                        // eslint-disable-next-line prettier/prettier
+                        filter: { "AND": paymentMethods.map((paymentMethod) => (
+                            {
+                                // eslint-disable-next-line prettier/prettier
+                                "paymentMethods_has": paymentMethod
+                            }))
+                        }
+                    });
+                    const { data } = presult as {
+                        data: { accessTimes: { items: pNewestProjectsResponse[] } };
+                    };
+
+                    if (Array.isArray(data?.accessTimes?.items)) {
+                        return data.accessTimes.items.map((item) => ({
+                            id: item.id,
+                            accessTimeId: item.accessTimeId,
+                            totalVotePoint: item.totalVotePoint,
+                            totalVoteParticipantCount: item.totalVoteParticipantCount.toString()
+                        }));
+                    } else {
+                        return [];
+                    }
                 default:
-                    return []; // to-do, ponder case
+                    return [];
             }
         } catch (_err) {
             throw new Error("[newestProjects]: Subgraph query failed!");
@@ -421,12 +466,14 @@ export class SubgraphService {
     async topRatedProjects(
         chainId: number,
         page?: number,
-        paymentMethods?: Address[]
+        paymentMethods?: Address[],
+        ponderPageCursor?: string | null
     ): Promise<TopRatedProjectsResponse[]> {
         try {
             const limit = Number(process.env.PAGE_ITEM_LIMIT);
             const skip = page ? (page - 1) * limit : 0;
             paymentMethods ??= [];
+            ponderPageCursor ??= null;
 
             switch (this.clientTypes[chainId]) {
                 case "thegraph":
@@ -438,8 +485,37 @@ export class SubgraphService {
                     const { accessTimes } = result as { accessTimes: TopRatedProjectsResponse[] };
 
                     return accessTimes == null ? [] : accessTimes;
+                case "ponder":
+                    const presult = await this.getClient(chainId).request(
+                        pTopRatedProjectsDocument,
+                        {
+                            limit,
+                            after: ponderPageCursor,
+                            // eslint-disable-next-line prettier/prettier
+                            filter: { "AND": paymentMethods.map((paymentMethod) => (
+                                {
+                                    // eslint-disable-next-line prettier/prettier
+                                    "paymentMethods_has": paymentMethod
+                                }))
+                            }
+                        }
+                    );
+                    const { data } = presult as {
+                        data: { accessTimes: { items: pTopRatedProjectsResponse[] } };
+                    };
+
+                    if (Array.isArray(data?.accessTimes?.items)) {
+                        return data.accessTimes.items.map((item) => ({
+                            id: item.id,
+                            accessTimeId: item.accessTimeId,
+                            totalVotePoint: item.totalVotePoint,
+                            totalVoteParticipantCount: item.totalVoteParticipantCount.toString()
+                        }));
+                    } else {
+                        return [];
+                    }
                 default:
-                    return []; // to-do, ponder case
+                    return [];
             }
         } catch (_err) {
             throw new Error("[topRatedProjects]: Subgraph query failed!");
@@ -517,7 +593,7 @@ export class SubgraphService {
                         };
                     };
 
-                    if (Array.isArray(data.accessVotes.items)) {
+                    if (Array.isArray(data?.accessVotes?.items)) {
                         return data.accessVotes.items.map((item) => ({
                             participantCount: item.participantCount.toString(),
                             votePoint: item.votePoint

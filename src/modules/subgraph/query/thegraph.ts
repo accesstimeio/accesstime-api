@@ -108,7 +108,7 @@ export const CountProjectsDocument = gql`
             accessTimeId
         }
     }
-`;
+`; // to-do, in filtering its not correct to use
 
 export interface NewestProjectsResponse {
     id: Address;
