@@ -152,42 +152,30 @@ export const TopRatedProjectsDocument = gql`
 `; // to-do, pagination issue
 
 export type WeeklyPopularProjectsResponse = {
-    accessTime: {
-        id: Address;
-        accessTimeId: string;
-    };
-    participantCount: string;
+    accessTimeAddress: Address;
+    accessTimeId: string;
+    participantCount: number;
     votePoint: string;
 };
 
 export const WeeklyPopularProjectsDocument = gql`
-    query WeeklyPopularProjects(
-        $epochWeek: BigInt!
-        $limit: Int!
-        $skip: Int!
-        $paymentMethods: [String!]
-    ) {
+    query WeeklyPopularProjects($limit: Int!, $after: String, $filter: accessVoteFilter!) {
         accessVotes(
-            orderDirection: desc
-            orderBy: votePoint
+            orderDirection: "desc"
+            orderBy: "votePoint"
             limit: $limit
-            skip: $skip
-            where: {
-                and: [
-                    { accessTime_: { paymentMethods_contains: $paymentMethods } }
-                    { epochWeek: $epochWeek }
-                ]
-            }
+            after: $after
+            where: $filter
         ) {
-            accessTime {
-                id
+            items {
+                accessTimeAddress
                 accessTimeId
+                participantCount
+                votePoint
             }
-            participantCount
-            votePoint
         }
     }
-`; // to-do, pagination issue - filtering issue
+`; // to-do, pagination issue
 
 export type ProjectWeeklyVoteResponse = {
     participantCount: number;

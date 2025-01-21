@@ -42,8 +42,8 @@ import {
     NewestProjectsDocument as pNewestProjectsDocument,
     TopRatedProjectsResponse as pTopRatedProjectsResponse,
     TopRatedProjectsDocument as pTopRatedProjectsDocument,
-    // WeeklyPopularProjectsResponse as pWeeklyPopularProjectsResponse,
-    // WeeklyPopularProjectsDocument as pWeeklyPopularProjectsDocument,
+    WeeklyPopularProjectsResponse as pWeeklyPopularProjectsResponse,
+    WeeklyPopularProjectsDocument as pWeeklyPopularProjectsDocument,
     ProjectWeeklyVoteDocument as pProjectWeeklyVoteDocument,
     ProjectWeeklyVoteResponse as pProjectWeeklyVoteResponse,
     CountProjectsDocument as pCountProjectsDocument
@@ -526,12 +526,14 @@ export class SubgraphService {
         chainId: number,
         epochWeek: number,
         page?: number,
-        paymentMethods?: Address[]
+        paymentMethods?: Address[],
+        ponderPageCursor?: string | null
     ): Promise<WeeklyPopularProjectsResponse[]> {
         try {
             const limit = Number(process.env.PAGE_ITEM_LIMIT);
             const skip = page ? (page - 1) * limit : 0;
             paymentMethods ??= [];
+            ponderPageCursor ??= null;
 
             switch (this.clientTypes[chainId]) {
                 case "thegraph":
@@ -549,8 +551,41 @@ export class SubgraphService {
                     };
 
                     return accessVotes == null ? [] : accessVotes;
+                case "ponder":
+                    const filterContent: any[] = paymentMethods.map((paymentMethod) => ({
+                        // eslint-disable-next-line prettier/prettier
+                        "accessTimePaymentMethods_has": paymentMethod
+                    }));
+                    // eslint-disable-next-line prettier/prettier
+                    filterContent.push({ "epochWeek": epochWeek.toString() });
+                    const presult = await this.getClient(chainId).request(
+                        pWeeklyPopularProjectsDocument,
+                        {
+                            limit,
+                            after: ponderPageCursor,
+                            filter: {
+                                AND: filterContent
+                            }
+                        }
+                    );
+                    const { data } = presult as {
+                        data: { accessVotes: { items: pWeeklyPopularProjectsResponse[] } };
+                    };
+
+                    if (Array.isArray(data?.accessVotes?.items)) {
+                        return data.accessVotes.items.map((item) => ({
+                            accessTime: {
+                                id: item.accessTimeAddress,
+                                accessTimeId: item.accessTimeId
+                            },
+                            participantCount: item.participantCount.toString(),
+                            votePoint: item.votePoint
+                        }));
+                    } else {
+                        return [];
+                    }
                 default:
-                    return []; // to-do, ponder case
+                    return [];
             }
         } catch (_err) {
             throw new Error("[weeklyPopularProjects]: Subgraph query failed!");
