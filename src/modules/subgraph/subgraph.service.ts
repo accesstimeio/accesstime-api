@@ -34,7 +34,7 @@ import {
     RatesDocument as pRatesDocument,
     CountProjectsResponse as pCountProjectsResponse,
     LastDeploymentsDocument as pLastDeploymentsDocument,
-    // ListDeploymentsDocument as pListDeploymentsDocument,
+    ListDeploymentsDocument as pListDeploymentsDocument,
     CountDeploymentsDocument as pCountDeploymentsDocument,
     SyncDocument as pSyncDocument,
     ProjectByIdDocument as pProjectByIdDocument,
@@ -46,9 +46,9 @@ import {
     WeeklyPopularProjectsDocument as pWeeklyPopularProjectsDocument,
     ProjectWeeklyVoteDocument as pProjectWeeklyVoteDocument,
     ProjectWeeklyVoteResponse as pProjectWeeklyVoteResponse,
-    CountProjectsDocument as pCountProjectsDocument
-    // CountWeeklyVoteProjectsDocument as pCountWeeklyVoteProjectsDocument,
-    // CountWeeklyVoteProjectsResponse as pCountWeeklyVoteProjectsResponse,
+    CountProjectsDocument as pCountProjectsDocument,
+    CountWeeklyVoteProjectsDocument as pCountWeeklyVoteProjectsDocument,
+    CountWeeklyVoteProjectsResponse as pCountWeeklyVoteProjectsResponse
 } from "./query/ponder";
 
 import { DeploymentService } from "../deployment/deployment.service";
@@ -204,7 +204,7 @@ export class SubgraphService {
         }
     }
 
-    async lastDeployments(chainId: number, address: Address) {
+    async lastDeployments(chainId: number, address: Address): Promise<DeploymentDto[]> {
         try {
             switch (this.clientTypes[chainId]) {
                 case "thegraph":
@@ -236,10 +236,16 @@ export class SubgraphService {
         }
     }
 
-    async listDeployments(chainId: number, address: Address, page?: number) {
+    async listDeployments(
+        chainId: number,
+        address: Address,
+        page?: number,
+        ponderPageCursor?: string | null
+    ): Promise<DeploymentDto[]> {
         try {
             const limit = Number(process.env.PAGE_ITEM_LIMIT);
             const skip = page ? page * limit : 0;
+            ponderPageCursor ??= null;
 
             switch (this.clientTypes[chainId]) {
                 case "thegraph":
@@ -251,8 +257,26 @@ export class SubgraphService {
                     const { accessTimes } = result as { accessTimes: DeploymentDto[] };
 
                     return accessTimes;
+                case "ponder":
+                    const presult = await this.getClient(chainId).request(
+                        pListDeploymentsDocument,
+                        {
+                            owner: address,
+                            limit,
+                            after: ponderPageCursor
+                        }
+                    );
+                    const { data } = presult as {
+                        data: { accessTimes: { items: DeploymentDto[] } };
+                    };
+
+                    if (Array.isArray(data?.accessTimes?.items)) {
+                        return data.accessTimes.items;
+                    } else {
+                        return [];
+                    }
                 default:
-                    []; // to-do, ponder case
+                    [];
             }
         } catch (_err) {
             throw new Error("[listDeployments]: Subgraph query failed!");
@@ -558,6 +582,7 @@ export class SubgraphService {
                     }));
                     // eslint-disable-next-line prettier/prettier
                     filterContent.push({ "epochWeek": epochWeek.toString() });
+
                     const presult = await this.getClient(chainId).request(
                         pWeeklyPopularProjectsDocument,
                         {
@@ -666,8 +691,33 @@ export class SubgraphService {
                     };
 
                     return weeklyVotes == null ? 0 : Number(weeklyVotes[0].accessTimes.length);
+                case "ponder":
+                    const filterContent: any[] = paymentMethods.map((paymentMethod) => ({
+                        // eslint-disable-next-line prettier/prettier
+                        "accessTimePaymentMethods_has": paymentMethod
+                    }));
+                    // eslint-disable-next-line prettier/prettier
+                    filterContent.push({ "epochWeek": epochWeek.toString() });
+
+                    const presult = await this.getClient(chainId).request(
+                        pCountWeeklyVoteProjectsDocument,
+                        {
+                            filter: {
+                                AND: filterContent
+                            }
+                        }
+                    );
+                    const { data } = presult as {
+                        data: { accessVotes: pCountWeeklyVoteProjectsResponse };
+                    };
+
+                    if (data?.accessVotes?.totalCount) {
+                        return data.accessVotes.totalCount;
+                    } else {
+                        return 0;
+                    }
                 default:
-                    return 0; // to-do, ponder case
+                    return 0;
             }
         } catch (_err) {
             throw new Error("[countProjects]: Subgraph query failed!");

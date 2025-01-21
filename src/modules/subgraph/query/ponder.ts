@@ -31,17 +31,19 @@ export const LastDeploymentsDocument = gql`
 `;
 
 export const ListDeploymentsDocument = gql`
-    query ListDeployments($owner: String!, $limit: Int!, $skip: Int!) {
+    query ListDeployments($owner: String!, $limit: Int!, $after: String) {
         accessTimes(
-            orderDirection: desc
-            orderBy: updateTimestamp
+            orderDirection: "desc"
+            orderBy: "updateTimestamp"
             limit: $limit
-            skip: $skip
+            after: $after
             where: { owner: $owner }
         ) {
-            accessTimeId
-            id
-            paused
+            items {
+                accessTimeId
+                id
+                paused
+            }
         }
     }
 `; // to-do, pagination issue
@@ -196,15 +198,13 @@ export const ProjectWeeklyVoteDocument = gql`
 `;
 
 export type CountWeeklyVoteProjectsResponse = {
-    accessTimes: { paymentMethods: Address[] }[];
+    totalCount: number;
 };
 
 export const CountWeeklyVoteProjectsDocument = gql`
-    query CountWeeklyVoteProjects($epochWeek: String!, $paymentMethods: [String!]) {
-        weeklyVotes(where: { id: $epochWeek }) {
-            accessTimes(where: { paymentMethods_contains: $paymentMethods }) {
-                paymentMethods
-            }
+    query CountWeeklyVoteProjects($filter: accessVoteFilter!) {
+        accessVotes(where: $filter) {
+            totalCount
         }
     }
-`; // to-do, filtering issue
+`;
