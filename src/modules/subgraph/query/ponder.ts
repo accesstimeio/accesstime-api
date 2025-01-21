@@ -60,11 +60,7 @@ export const ProjectByIdDocument = gql`
                 packages
                 removedPackages
                 paused
-                rates {
-                    items {
-                        token
-                    }
-                }
+                paymentMethods
                 prevOwner
                 updateTimestamp
             }

@@ -58,14 +58,6 @@ import { ProjectService } from "../project/project.service";
 import { PortalService } from "../portal/portal.service";
 import { FactoryService } from "../factory/factory.service";
 
-interface pProjectResponseDto extends Omit<ProjectResponseDto, "paymentMethods"> {
-    rates: {
-        items: {
-            token: Address;
-        }[];
-    };
-}
-
 @Injectable()
 export class SubgraphService {
     private client: { [key: number]: GraphQLClient | null } = {};
@@ -115,12 +107,10 @@ export class SubgraphService {
                 return accessTimes.reverse();
             case "ponder":
                 const presult = await this.getClient(chainId).request(pSyncDocument);
-                const { data } = presult as {
-                    data: { accessTimes: { items: SyncResponse[] } };
+                const { accessTimes: paccessTimes } = presult as {
+                    accessTimes: { items: SyncResponse[] };
                 };
-                return Array.isArray(data?.accessTimes?.items)
-                    ? data.accessTimes.items.reverse()
-                    : [];
+                return Array.isArray(paccessTimes?.items) ? paccessTimes.items.reverse() : [];
             default:
                 return [];
         }
@@ -219,15 +209,15 @@ export class SubgraphService {
                     const presult = await this.getClient(chainId).request(
                         pLastDeploymentsDocument,
                         {
-                            owner: address,
+                            owner: address.toLowerCase(),
                             limit: Number(process.env.LAST_DEPLOYMENTS_LIMIT)
                         }
                     );
-                    const { data } = presult as {
-                        data: { accessTimes: { items: DeploymentDto[] } };
+                    const { accessTimes: paccessTimes } = presult as {
+                        accessTimes: { items: DeploymentDto[] };
                     };
 
-                    return Array.isArray(data?.accessTimes?.items) ? data.accessTimes.items : [];
+                    return Array.isArray(paccessTimes?.items) ? paccessTimes.items : [];
                 default:
                     return [];
             }
@@ -261,22 +251,18 @@ export class SubgraphService {
                     const presult = await this.getClient(chainId).request(
                         pListDeploymentsDocument,
                         {
-                            owner: address,
+                            owner: address.toLowerCase(),
                             limit,
                             after: ponderPageCursor
                         }
                     );
-                    const { data } = presult as {
-                        data: { accessTimes: { items: DeploymentDto[] } };
+                    const { accessTimes: paccessTimes } = presult as {
+                        accessTimes: { items: DeploymentDto[] };
                     };
 
-                    if (Array.isArray(data?.accessTimes?.items)) {
-                        return data.accessTimes.items;
-                    } else {
-                        return [];
-                    }
+                    return Array.isArray(paccessTimes?.items) ? paccessTimes.items : [];
                 default:
-                    [];
+                    return [];
             }
         } catch (_err) {
             throw new Error("[listDeployments]: Subgraph query failed!");
@@ -297,16 +283,14 @@ export class SubgraphService {
                     const presult = await this.getClient(chainId).request(
                         pCountDeploymentsDocument,
                         {
-                            owner: address
+                            owner: address.toLowerCase()
                         }
                     );
-                    const { data } = presult as {
-                        data: { owner: pCountDeploymentsResponse };
-                    };
+                    const { owner: powner } = presult as { owner: pCountDeploymentsResponse };
 
-                    return data.owner == null
+                    return powner == null
                         ? { deploymentCount: "0" }
-                        : { deploymentCount: data.owner.deploymentCount.toString() };
+                        : { deploymentCount: powner.deploymentCount.toString() };
                 default:
                     return { deploymentCount: "0" };
             }
@@ -329,33 +313,12 @@ export class SubgraphService {
                     const presult = await this.getClient(chainId).request(pProjectByIdDocument, {
                         id
                     });
-                    const { data } = presult as {
-                        data: { accessTimes: { items: pProjectResponseDto[] } };
+                    const { accessTimes: paccessTimes } = presult as {
+                        accessTimes: { items: ProjectResponseDto[] };
                     };
 
-                    if (
-                        Array.isArray(data?.accessTimes?.items) &&
-                        data.accessTimes.items.length > 0
-                    ) {
-                        const accessTime = data.accessTimes.items[0];
-
-                        const paccessTimes: ProjectResponseDto[] = [];
-
-                        paccessTimes.push({
-                            id: accessTime.id,
-                            extraTimes: accessTime.extraTimes,
-                            removedExtraTimes: accessTime.removedExtraTimes,
-                            nextOwner: accessTime.nextOwner,
-                            owner: accessTime.owner,
-                            packages: accessTime.packages,
-                            removedPackages: accessTime.removedPackages,
-                            paymentMethods: accessTime.rates.items.map((rate) => rate.token),
-                            paused: accessTime.paused,
-                            prevOwner: accessTime.prevOwner,
-                            updateTimestamp: accessTime.updateTimestamp
-                        });
-
-                        return paccessTimes;
+                    if (Array.isArray(paccessTimes?.items) && paccessTimes?.items.length > 0) {
+                        return paccessTimes.items;
                     } else {
                         return [];
                     }
@@ -377,11 +340,11 @@ export class SubgraphService {
                     return factoryRates == null ? [] : factoryRates;
                 case "ponder":
                     const presult = await this.getClient(chainId).request(pRatesDocument, {});
-                    const { data } = presult as {
-                        data: { factoryRates: { items: RatesDto[] } };
+                    const { factoryRates: pfactoryRates } = presult as {
+                        factoryRates: { items: RatesDto[] };
                     };
 
-                    return Array.isArray(data?.factoryRates?.items) ? data.factoryRates.items : [];
+                    return Array.isArray(pfactoryRates?.items) ? pfactoryRates.items : [];
                 default:
                     return [];
             }
@@ -412,17 +375,15 @@ export class SubgraphService {
                         filter: { "AND": paymentMethods.map((paymentMethod) => (
                             {
                                 // eslint-disable-next-line prettier/prettier
-                                "paymentMethods_has": paymentMethod
+                                "paymentMethods_has": paymentMethod.toLowerCase()
                             }))
                         }
                     });
-                    const { data } = presult as { data: { accessTimes: pCountProjectsResponse } };
+                    const { accessTimes: paccessTimes } = presult as {
+                        accessTimes: pCountProjectsResponse;
+                    };
 
-                    if (data?.accessTimes?.totalCount) {
-                        return data.accessTimes.totalCount;
-                    } else {
-                        return 0;
-                    }
+                    return paccessTimes?.totalCount ? paccessTimes.totalCount : 0;
                 default:
                     return 0;
             }
@@ -461,16 +422,16 @@ export class SubgraphService {
                         filter: { "AND": paymentMethods.map((paymentMethod) => (
                             {
                                 // eslint-disable-next-line prettier/prettier
-                                "paymentMethods_has": paymentMethod
+                                "paymentMethods_has": paymentMethod.toLowerCase()
                             }))
                         }
                     });
-                    const { data } = presult as {
-                        data: { accessTimes: { items: pNewestProjectsResponse[] } };
+                    const { accessTimes: paccessTimes } = presult as {
+                        accessTimes: { items: pNewestProjectsResponse[] };
                     };
 
-                    if (Array.isArray(data?.accessTimes?.items)) {
-                        return data.accessTimes.items.map((item) => ({
+                    if (Array.isArray(paccessTimes?.items)) {
+                        return paccessTimes.items.map((item) => ({
                             id: item.id,
                             accessTimeId: item.accessTimeId,
                             totalVotePoint: item.totalVotePoint,
@@ -519,17 +480,17 @@ export class SubgraphService {
                             filter: { "AND": paymentMethods.map((paymentMethod) => (
                                 {
                                     // eslint-disable-next-line prettier/prettier
-                                    "paymentMethods_has": paymentMethod
+                                    "paymentMethods_has": paymentMethod.toLowerCase()
                                 }))
                             }
                         }
                     );
-                    const { data } = presult as {
-                        data: { accessTimes: { items: pTopRatedProjectsResponse[] } };
+                    const { accessTimes: paccessTimes } = presult as {
+                        accessTimes: { items: pTopRatedProjectsResponse[] };
                     };
 
-                    if (Array.isArray(data?.accessTimes?.items)) {
-                        return data.accessTimes.items.map((item) => ({
+                    if (Array.isArray(paccessTimes?.items)) {
+                        return paccessTimes.items.map((item) => ({
                             id: item.id,
                             accessTimeId: item.accessTimeId,
                             totalVotePoint: item.totalVotePoint,
@@ -578,7 +539,7 @@ export class SubgraphService {
                 case "ponder":
                     const filterContent: any[] = paymentMethods.map((paymentMethod) => ({
                         // eslint-disable-next-line prettier/prettier
-                        "accessTimePaymentMethods_has": paymentMethod
+                        "accessTimePaymentMethods_has": paymentMethod.toLowerCase()
                     }));
                     // eslint-disable-next-line prettier/prettier
                     filterContent.push({ "epochWeek": epochWeek.toString() });
@@ -593,12 +554,12 @@ export class SubgraphService {
                             }
                         }
                     );
-                    const { data } = presult as {
-                        data: { accessVotes: { items: pWeeklyPopularProjectsResponse[] } };
+                    const { accessVotes: paccessVotes } = presult as {
+                        accessVotes: { items: pWeeklyPopularProjectsResponse[] };
                     };
 
-                    if (Array.isArray(data?.accessVotes?.items)) {
-                        return data.accessVotes.items.map((item) => ({
+                    if (Array.isArray(paccessVotes?.items)) {
+                        return paccessVotes.items.map((item) => ({
                             accessTime: {
                                 id: item.accessTimeAddress,
                                 accessTimeId: item.accessTimeId
@@ -642,19 +603,17 @@ export class SubgraphService {
                         pProjectWeeklyVoteDocument,
                         {
                             epochWeek,
-                            accessTime
+                            accessTime: accessTime.toLowerCase()
                         }
                     );
-                    const { data } = presult as {
-                        data: {
-                            accessVotes: {
-                                items: pProjectWeeklyVoteResponse[];
-                            };
+                    const { accessVotes: paccessVotes } = presult as {
+                        accessVotes: {
+                            items: pProjectWeeklyVoteResponse[];
                         };
                     };
 
-                    if (Array.isArray(data?.accessVotes?.items)) {
-                        return data.accessVotes.items.map((item) => ({
+                    if (Array.isArray(paccessVotes?.items)) {
+                        return paccessVotes.items.map((item) => ({
                             participantCount: item.participantCount.toString(),
                             votePoint: item.votePoint
                         }));
@@ -694,7 +653,7 @@ export class SubgraphService {
                 case "ponder":
                     const filterContent: any[] = paymentMethods.map((paymentMethod) => ({
                         // eslint-disable-next-line prettier/prettier
-                        "accessTimePaymentMethods_has": paymentMethod
+                        "accessTimePaymentMethods_has": paymentMethod.toLowerCase()
                     }));
                     // eslint-disable-next-line prettier/prettier
                     filterContent.push({ "epochWeek": epochWeek.toString() });
@@ -707,15 +666,11 @@ export class SubgraphService {
                             }
                         }
                     );
-                    const { data } = presult as {
-                        data: { accessVotes: pCountWeeklyVoteProjectsResponse };
+                    const { accessVotes: paccessVotes } = presult as {
+                        accessVotes: pCountWeeklyVoteProjectsResponse;
                     };
 
-                    if (data?.accessVotes?.totalCount) {
-                        return data.accessVotes.totalCount;
-                    } else {
-                        return 0;
-                    }
+                    return paccessVotes?.totalCount ? paccessVotes.totalCount : 0;
                 default:
                     return 0;
             }
