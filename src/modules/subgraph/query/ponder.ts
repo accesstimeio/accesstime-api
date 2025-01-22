@@ -44,9 +44,12 @@ export const ListDeploymentsDocument = gql`
                 id
                 paused
             }
+            pageInfo {
+                endCursor
+            }
         }
     }
-`; // to-do, pagination issue
+`;
 
 export const ProjectByIdDocument = gql`
     query ProjectById($id: BigInt!) {
@@ -122,13 +125,18 @@ export const NewestProjectsDocument = gql`
             after: $after
             where: $filter
         ) {
-            id
-            accessTimeId
-            totalVotePoint
-            totalVoteParticipantCount
+            items {
+                id
+                accessTimeId
+                totalVotePoint
+                totalVoteParticipantCount
+            }
+            pageInfo {
+                endCursor
+            }
         }
     }
-`; // to-do, pagination issue
+`;
 
 export interface TopRatedProjectsResponse extends NewestProjectsResponse {}
 
@@ -141,13 +149,18 @@ export const TopRatedProjectsDocument = gql`
             after: $after
             where: $filter
         ) {
-            id
-            accessTimeId
-            totalVotePoint
-            totalVoteParticipantCount
+            items {
+                id
+                accessTimeId
+                totalVotePoint
+                totalVoteParticipantCount
+            }
+            pageInfo {
+                endCursor
+            }
         }
     }
-`; // to-do, pagination issue
+`;
 
 export type WeeklyPopularProjectsResponse = {
     accessTimeAddress: Address;
@@ -171,9 +184,12 @@ export const WeeklyPopularProjectsDocument = gql`
                 participantCount
                 votePoint
             }
+            pageInfo {
+                endCursor
+            }
         }
     }
-`; // to-do, pagination issue
+`;
 
 export type ProjectWeeklyVoteResponse = {
     participantCount: number;

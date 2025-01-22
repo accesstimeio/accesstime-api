@@ -57,6 +57,11 @@ export class PortalController {
         type: String,
         required: false
     })
+    @ApiQuery({
+        name: "pageCursor",
+        type: String,
+        required: false
+    })
     @ApiResponse({
         type: ExploreResponseDto
     })
@@ -66,11 +71,19 @@ export class PortalController {
         @Query("page") page: number,
         @Query("sort") sort: SUPPORTED_SORT_TYPE,
         @Query("paymentMethods") paymentMethods: string,
+        @Query("pageCursor") pageCursor: string,
         @Signer(false) signer: Address
     ) {
         const paymentMethods_: Address[] | undefined =
             paymentMethods && (paymentMethods.split(",") as Address[]);
-        return this.portalService.getExplore(chainId, page, sort, paymentMethods_, signer);
+        return this.portalService.getExplore(
+            chainId,
+            page,
+            sort,
+            paymentMethods_,
+            pageCursor,
+            signer
+        );
     }
 
     @ApiHeaders([

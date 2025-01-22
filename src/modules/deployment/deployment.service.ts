@@ -51,7 +51,8 @@ export class DeploymentService {
     async listDeployments(
         chainId: number,
         address: Address,
-        page?: number
+        page?: number,
+        pageCursor?: string
     ): Promise<ListDeploymentResponseDto> {
         const validAddress = isAddress(address);
         const requestedPage = page ? Number(page) : 0;
@@ -84,7 +85,8 @@ export class DeploymentService {
                     return {
                         page: 0,
                         maxPage: 0,
-                        deployments: []
+                        deployments: [],
+                        pageCursor: null
                     };
                 }
                 throw new HttpException(
@@ -98,13 +100,15 @@ export class DeploymentService {
             const listDeployments = await this.subgraphService.listDeployments(
                 chainId,
                 address,
-                requestedPage
+                requestedPage,
+                pageCursor
             );
 
             const response: ListDeploymentResponseDto = {
                 page: requestedPage,
                 maxPage: Math.floor(deploymentCount / limit),
-                deployments: listDeployments
+                deployments: listDeployments.deployments,
+                pageCursor: listDeployments.pageCursor
             };
 
             await this.cacheService.set(dataKey, response, {

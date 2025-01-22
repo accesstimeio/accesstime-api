@@ -231,7 +231,7 @@ export class SubgraphService {
         address: Address,
         page?: number,
         ponderPageCursor?: string | null
-    ): Promise<DeploymentDto[]> {
+    ): Promise<{ deployments: DeploymentDto[]; pageCursor: string | null }> {
         try {
             const limit = Number(process.env.PAGE_ITEM_LIMIT);
             const skip = page ? page * limit : 0;
@@ -246,7 +246,10 @@ export class SubgraphService {
                     });
                     const { accessTimes } = result as { accessTimes: DeploymentDto[] };
 
-                    return accessTimes;
+                    return {
+                        deployments: accessTimes,
+                        pageCursor: null
+                    };
                 case "ponder":
                     const presult = await this.getClient(chainId).request(
                         pListDeploymentsDocument,
@@ -257,12 +260,26 @@ export class SubgraphService {
                         }
                     );
                     const { accessTimes: paccessTimes } = presult as {
-                        accessTimes: { items: DeploymentDto[] };
+                        accessTimes: {
+                            items: DeploymentDto[];
+                            pageInfo: { endCursor: string | null };
+                        };
                     };
 
-                    return Array.isArray(paccessTimes?.items) ? paccessTimes.items : [];
+                    return Array.isArray(paccessTimes?.items)
+                        ? {
+                              deployments: paccessTimes.items,
+                              pageCursor: paccessTimes.pageInfo.endCursor
+                          }
+                        : {
+                              deployments: [],
+                              pageCursor: null
+                          };
                 default:
-                    return [];
+                    return {
+                        deployments: [],
+                        pageCursor: null
+                    };
             }
         } catch (_err) {
             throw new Error("[listDeployments]: Subgraph query failed!");
@@ -397,7 +414,7 @@ export class SubgraphService {
         page?: number,
         paymentMethods?: Address[],
         ponderPageCursor?: string | null
-    ): Promise<NewestProjectsResponse[]> {
+    ): Promise<{ projects: NewestProjectsResponse[]; pageCursor: string | null }> {
         try {
             const limit = Number(process.env.PAGE_ITEM_LIMIT);
             const skip = page ? (page - 1) * limit : 0;
@@ -413,7 +430,9 @@ export class SubgraphService {
                     });
                     const { accessTimes } = result as { accessTimes: NewestProjectsResponse[] };
 
-                    return accessTimes == null ? [] : accessTimes;
+                    return accessTimes == null
+                        ? { projects: [], pageCursor: null }
+                        : { projects: accessTimes, pageCursor: null };
                 case "ponder":
                     const presult = await this.getClient(chainId).request(pNewestProjectsDocument, {
                         limit,
@@ -427,21 +446,27 @@ export class SubgraphService {
                         }
                     });
                     const { accessTimes: paccessTimes } = presult as {
-                        accessTimes: { items: pNewestProjectsResponse[] };
+                        accessTimes: {
+                            items: pNewestProjectsResponse[];
+                            pageInfo: { endCursor: string | null };
+                        };
                     };
 
                     if (Array.isArray(paccessTimes?.items)) {
-                        return paccessTimes.items.map((item) => ({
-                            id: item.id,
-                            accessTimeId: item.accessTimeId,
-                            totalVotePoint: item.totalVotePoint,
-                            totalVoteParticipantCount: item.totalVoteParticipantCount.toString()
-                        }));
+                        return {
+                            projects: paccessTimes.items.map((item) => ({
+                                id: item.id,
+                                accessTimeId: item.accessTimeId,
+                                totalVotePoint: item.totalVotePoint,
+                                totalVoteParticipantCount: item.totalVoteParticipantCount.toString()
+                            })),
+                            pageCursor: paccessTimes.pageInfo.endCursor
+                        };
                     } else {
-                        return [];
+                        return { projects: [], pageCursor: null };
                     }
                 default:
-                    return [];
+                    return { projects: [], pageCursor: null };
             }
         } catch (_err) {
             throw new Error("[newestProjects]: Subgraph query failed!");
@@ -453,7 +478,7 @@ export class SubgraphService {
         page?: number,
         paymentMethods?: Address[],
         ponderPageCursor?: string | null
-    ): Promise<TopRatedProjectsResponse[]> {
+    ): Promise<{ projects: TopRatedProjectsResponse[]; pageCursor: string | null }> {
         try {
             const limit = Number(process.env.PAGE_ITEM_LIMIT);
             const skip = page ? (page - 1) * limit : 0;
@@ -469,7 +494,9 @@ export class SubgraphService {
                     });
                     const { accessTimes } = result as { accessTimes: TopRatedProjectsResponse[] };
 
-                    return accessTimes == null ? [] : accessTimes;
+                    return accessTimes == null
+                        ? { projects: [], pageCursor: null }
+                        : { projects: accessTimes, pageCursor: null };
                 case "ponder":
                     const presult = await this.getClient(chainId).request(
                         pTopRatedProjectsDocument,
@@ -486,21 +513,27 @@ export class SubgraphService {
                         }
                     );
                     const { accessTimes: paccessTimes } = presult as {
-                        accessTimes: { items: pTopRatedProjectsResponse[] };
+                        accessTimes: {
+                            items: pTopRatedProjectsResponse[];
+                            pageInfo: { endCursor: string | null };
+                        };
                     };
 
                     if (Array.isArray(paccessTimes?.items)) {
-                        return paccessTimes.items.map((item) => ({
-                            id: item.id,
-                            accessTimeId: item.accessTimeId,
-                            totalVotePoint: item.totalVotePoint,
-                            totalVoteParticipantCount: item.totalVoteParticipantCount.toString()
-                        }));
+                        return {
+                            projects: paccessTimes.items.map((item) => ({
+                                id: item.id,
+                                accessTimeId: item.accessTimeId,
+                                totalVotePoint: item.totalVotePoint,
+                                totalVoteParticipantCount: item.totalVoteParticipantCount.toString()
+                            })),
+                            pageCursor: paccessTimes.pageInfo.endCursor
+                        };
                     } else {
-                        return [];
+                        return { projects: [], pageCursor: null };
                     }
                 default:
-                    return [];
+                    return { projects: [], pageCursor: null };
             }
         } catch (_err) {
             throw new Error("[topRatedProjects]: Subgraph query failed!");
@@ -513,7 +546,7 @@ export class SubgraphService {
         page?: number,
         paymentMethods?: Address[],
         ponderPageCursor?: string | null
-    ): Promise<WeeklyPopularProjectsResponse[]> {
+    ): Promise<{ projects: WeeklyPopularProjectsResponse[]; pageCursor: string | null }> {
         try {
             const limit = Number(process.env.PAGE_ITEM_LIMIT);
             const skip = page ? (page - 1) * limit : 0;
@@ -535,7 +568,9 @@ export class SubgraphService {
                         accessVotes: WeeklyPopularProjectsResponse[];
                     };
 
-                    return accessVotes == null ? [] : accessVotes;
+                    return accessVotes == null
+                        ? { projects: [], pageCursor: null }
+                        : { projects: accessVotes, pageCursor: null };
                 case "ponder":
                     const filterContent: any[] = paymentMethods.map((paymentMethod) => ({
                         // eslint-disable-next-line prettier/prettier
@@ -555,23 +590,29 @@ export class SubgraphService {
                         }
                     );
                     const { accessVotes: paccessVotes } = presult as {
-                        accessVotes: { items: pWeeklyPopularProjectsResponse[] };
+                        accessVotes: {
+                            items: pWeeklyPopularProjectsResponse[];
+                            pageInfo: { endCursor: string | null };
+                        };
                     };
 
                     if (Array.isArray(paccessVotes?.items)) {
-                        return paccessVotes.items.map((item) => ({
-                            accessTime: {
-                                id: item.accessTimeAddress,
-                                accessTimeId: item.accessTimeId
-                            },
-                            participantCount: item.participantCount.toString(),
-                            votePoint: item.votePoint
-                        }));
+                        return {
+                            projects: paccessVotes.items.map((item) => ({
+                                accessTime: {
+                                    id: item.accessTimeAddress,
+                                    accessTimeId: item.accessTimeId
+                                },
+                                participantCount: item.participantCount.toString(),
+                                votePoint: item.votePoint
+                            })),
+                            pageCursor: paccessVotes.pageInfo.endCursor
+                        };
                     } else {
-                        return [];
+                        return { projects: [], pageCursor: null };
                     }
                 default:
-                    return [];
+                    return { projects: [], pageCursor: null };
             }
         } catch (_err) {
             throw new Error("[weeklyPopularProjects]: Subgraph query failed!");

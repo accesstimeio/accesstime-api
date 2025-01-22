@@ -75,6 +75,7 @@ export class PortalService {
         page?: number,
         sort?: SUPPORTED_SORT_TYPE,
         paymentMethods?: Address[],
+        pageCursor?: string,
         user?: Address
     ): Promise<ExploreResponseDto> {
         const queryPage = page ?? 1;
@@ -119,6 +120,7 @@ export class PortalService {
         }
 
         let projects: CacheProject[] = [];
+        let nextPageCursor: string | null = null;
 
         if (querySort != "weekly_popular") {
             countProjects = await this.subgraphService.countProjects(chainId, paymentMethods);
@@ -145,10 +147,11 @@ export class PortalService {
                 const newestProjects = await this.subgraphService.newestProjects(
                     chainId,
                     queryPage,
-                    paymentMethods
+                    paymentMethods,
+                    pageCursor
                 );
 
-                newestProjects.forEach(
+                newestProjects.projects.forEach(
                     ({ id, accessTimeId, totalVotePoint, totalVoteParticipantCount }) => {
                         projects.push({
                             id,
@@ -163,15 +166,17 @@ export class PortalService {
                         });
                     }
                 );
+                nextPageCursor = newestProjects.pageCursor;
                 break;
             case "top_rated":
                 const topRatedProjects = await this.subgraphService.topRatedProjects(
                     chainId,
                     queryPage,
-                    paymentMethods
+                    paymentMethods,
+                    pageCursor
                 );
 
-                topRatedProjects.forEach(
+                topRatedProjects.projects.forEach(
                     ({ id, accessTimeId, totalVotePoint, totalVoteParticipantCount }) => {
                         projects.push({
                             id,
@@ -186,28 +191,33 @@ export class PortalService {
                         });
                     }
                 );
+                nextPageCursor = topRatedProjects.pageCursor;
                 break;
             default:
                 const weeklyPopularProjects = await this.subgraphService.weeklyPopularProjects(
                     chainId,
                     getEpochWeek(),
                     queryPage,
-                    paymentMethods
+                    paymentMethods,
+                    pageCursor
                 );
 
-                weeklyPopularProjects.forEach(({ accessTime, votePoint, participantCount }) => {
-                    projects.push({
-                        id: accessTime.id,
-                        accessTimeId: Number(accessTime.accessTimeId),
-                        avatarUrl: null,
-                        votePoint: Number(votePoint),
-                        voteParticipantCount: Number(participantCount),
-                        isFavorited: false,
-                        categories: [],
-                        domainVerify: false,
-                        portalVerify: false
-                    });
-                });
+                weeklyPopularProjects.projects.forEach(
+                    ({ accessTime, votePoint, participantCount }) => {
+                        projects.push({
+                            id: accessTime.id,
+                            accessTimeId: Number(accessTime.accessTimeId),
+                            avatarUrl: null,
+                            votePoint: Number(votePoint),
+                            voteParticipantCount: Number(participantCount),
+                            isFavorited: false,
+                            categories: [],
+                            domainVerify: false,
+                            portalVerify: false
+                        });
+                    }
+                );
+                nextPageCursor = weeklyPopularProjects.pageCursor;
                 break;
         }
 
@@ -244,7 +254,12 @@ export class PortalService {
                 projectDocuments.find((pd) => pd.id == project.accessTimeId)?.portalVerify ?? false
         }));
 
-        return { countProjects, maxPage: Math.floor(countProjects / limit), projects };
+        return {
+            countProjects,
+            maxPage: Math.floor(countProjects / limit),
+            projects,
+            pageCursor: nextPageCursor
+        };
     }
 
     async getFavorites(
@@ -302,7 +317,8 @@ export class PortalService {
         return {
             countProjects: countUserFavorites,
             maxPage: Math.floor(countUserFavorites / limit),
-            projects
+            projects,
+            pageCursor: null
         };
     }
 
