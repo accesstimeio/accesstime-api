@@ -690,7 +690,9 @@ export class SubgraphService {
                         weeklyVotes: CountWeeklyVoteProjectsResponse;
                     };
 
-                    return weeklyVotes == null ? 0 : Number(weeklyVotes[0].accessTimes.length);
+                    return weeklyVotes == null || !weeklyVotes[0]
+                        ? 0
+                        : Number(weeklyVotes[0].accessTimes.length);
                 case "ponder":
                     const filterContent: any[] = paymentMethods.map((paymentMethod) => ({
                         // eslint-disable-next-line prettier/prettier
