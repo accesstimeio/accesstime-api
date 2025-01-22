@@ -1,6 +1,7 @@
 import { NestFactory } from "@nestjs/core";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { Api } from "@accesstimeio/accesstime-common";
+import { VersioningType } from "@nestjs/common";
 
 import { AppModule } from "./app.module";
 
@@ -26,6 +27,10 @@ async function bootstrap() {
 
     app.enableCors({
         origin: corsOptionsDelegate
+    });
+
+    app.enableVersioning({
+        type: VersioningType.URI
     });
 
     const config = new DocumentBuilder()

@@ -19,7 +19,9 @@ import {
 } from "./dto";
 
 @UsePipes(new ValidationPipe({ transform: true }))
-@Controller()
+@Controller({
+    version: "1"
+})
 export class PortalController {
     constructor(private readonly portalService: PortalService) {}
 

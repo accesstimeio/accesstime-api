@@ -8,7 +8,9 @@ import { PortalLinkService } from "./portal-link.service";
 import { CheckResponseDto, UpdateStatusDto, UpdateStatusResponseDto } from "./dto";
 
 @UsePipes(new ValidationPipe({ transform: true }))
-@Controller()
+@Controller({
+    version: "1"
+})
 export class PortalLinkController {
     constructor(private readonly portalLinkService: PortalLinkService) {}
 

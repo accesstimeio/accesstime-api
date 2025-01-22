@@ -6,7 +6,9 @@ import { LastDeploymentResponseDto, ListDeploymentResponseDto, RatesDto } from "
 import { DeploymentService } from "./deployment.service";
 
 @UsePipes(new ValidationPipe({ transform: true }))
-@Controller()
+@Controller({
+    version: "1"
+})
 export class DeploymentController {
     constructor(private readonly deploymentService: DeploymentService) {}
 
