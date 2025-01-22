@@ -51,15 +51,19 @@ export class PortalModule implements NestModule {
     configure(consumer: MiddlewareConsumer) {
         consumer
             .apply(ChainIdCheckMiddleware)
-            .exclude({ path: "portal/featureds", method: RequestMethod.GET })
+            .exclude({ path: "portal/featureds", method: RequestMethod.GET, version: ["1"] })
             .forRoutes(PortalController);
         consumer
             .apply(SignatureCheckMiddleware)
             .exclude(
-                { path: "portal/featureds", method: RequestMethod.GET },
-                { path: "portal/explore/:chainId", method: RequestMethod.GET },
-                { path: "portal/project/:chainId/:id", method: RequestMethod.GET },
-                { path: "portal/project/:chainId/:id/votes", method: RequestMethod.GET }
+                { path: "portal/featureds", method: RequestMethod.GET, version: ["1"] },
+                { path: "portal/explore/:chainId", method: RequestMethod.GET, version: ["1"] },
+                { path: "portal/project/:chainId/:id", method: RequestMethod.GET, version: ["1"] },
+                {
+                    path: "portal/project/:chainId/:id/votes",
+                    method: RequestMethod.GET,
+                    version: ["1"]
+                }
             )
             .forRoutes(PortalController);
     }
