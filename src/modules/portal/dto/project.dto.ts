@@ -3,6 +3,8 @@ import { Expose, Type } from "class-transformer";
 import { ValidateNested } from "class-validator";
 import { Address } from "viem";
 
+import { RequestDomainVerifyResponseDto } from "./request-domain-verify";
+
 export class ProjectSocialDto {
     @Expose()
     @ApiProperty()
@@ -93,4 +95,11 @@ export class ProjectDto extends OmitType(ProjectCardDto, ["id"]) {
     @ValidateNested({ each: true })
     @Type(() => ProjectPackageDto)
     packages: ProjectPackageDto[];
+
+    @Expose()
+    @ApiProperty({
+        type: RequestDomainVerifyResponseDto,
+        nullable: true
+    })
+    domainVerifyDetails: RequestDomainVerifyResponseDto | null;
 }

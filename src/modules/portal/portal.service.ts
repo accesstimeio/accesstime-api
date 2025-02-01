@@ -336,6 +336,8 @@ export class PortalService {
             projectAddress
         );
 
+        const projectDomainVerifyDetails = await this.getProjectDomain(chainId, id);
+
         const {
             avatarUrl,
             socials,
@@ -359,7 +361,14 @@ export class PortalService {
             paymentMethods,
             packages,
             domainVerify,
-            portalVerify
+            portalVerify,
+            domainVerifyDetails: projectDomainVerifyDetails
+                ? {
+                      domain: projectDomainVerifyDetails.domain,
+                      recordKey: projectDomainVerifyDetails.recordKey,
+                      recordValue: projectDomainVerifyDetails.recordValue
+                  }
+                : null
         };
     }
 
