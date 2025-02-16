@@ -2,7 +2,7 @@ import { Inject, Injectable, forwardRef } from "@nestjs/common";
 import { CACHE_MANAGER, Cache } from "@nestjs/cache-manager";
 import { GraphQLClient } from "graphql-request";
 import { Address } from "viem";
-import { Chain, extractDomain } from "@accesstimeio/accesstime-common";
+import { Chain, extractDomain, SUPPORTED_CHAIN } from "@accesstimeio/accesstime-common";
 
 import { SUBGRAPH_TYPE, SUPPORTED_SUBGRAPH_TYPES } from "src/common";
 
@@ -99,7 +99,7 @@ export class SubgraphService {
         return this.client[chainId];
     }
 
-    private async syncCall(chainId: number) {
+    private async syncCall(chainId: SUPPORTED_CHAIN) {
         switch (this.clientTypes[chainId]) {
             case "thegraph":
                 const result = await this.getClient(chainId).request(SyncDocument);
@@ -119,71 +119,78 @@ export class SubgraphService {
     async sync() {
         try {
             if (!this.syncBusy) {
-                const chainId = 84532; // temporary
-                const factory = this.factoryService.client[chainId];
                 this.syncBusy = true;
+                for (let i = 0; i < Chain.ids.length; i++) {
+                    const chainId = Chain.ids[i];
+                    const factory = this.factoryService.client[chainId];
 
-                const reversedAccessTimes = await this.syncCall(chainId);
+                    const reversedAccessTimes = await this.syncCall(chainId);
 
-                let lastUpdateTimestamp =
-                    (await this.cacheService.get<string>("lastUpdateTimestamp")) ?? "0";
-                for (const accessTime of reversedAccessTimes) {
-                    const { owner, prevOwner, updateTimestamp, accessTimeId, id } = accessTime;
-                    if (BigInt(updateTimestamp) > BigInt(lastUpdateTimestamp)) {
-                        // check domain changes
-                        const [, , , , , , currentDomain] = await factory.read.deploymentDetails([
-                            id
-                        ]);
-                        const projectDomain = await this.portalService.getProjectDomain(
-                            chainId,
-                            Number(accessTimeId)
-                        );
-                        if (projectDomain && projectDomain.domain != extractDomain(currentDomain)) {
-                            await this.portalService.removeDomainVerify(
+                    let lastUpdateTimestamp =
+                        (await this.cacheService.get<string>("lastUpdateTimestamp")) ?? "0";
+                    for (const accessTime of reversedAccessTimes) {
+                        const { owner, prevOwner, updateTimestamp, accessTimeId, id } = accessTime;
+                        if (BigInt(updateTimestamp) > BigInt(lastUpdateTimestamp)) {
+                            // check domain changes
+                            const [, , , , , , currentDomain] =
+                                await factory.read.deploymentDetails([id]);
+                            const projectDomain = await this.portalService.getProjectDomain(
                                 chainId,
                                 Number(accessTimeId)
                             );
-                        }
+                            if (
+                                projectDomain &&
+                                projectDomain.domain != extractDomain(currentDomain)
+                            ) {
+                                await this.portalService.removeDomainVerify(
+                                    chainId,
+                                    Number(accessTimeId)
+                                );
+                            }
 
-                        const lastOwner =
-                            (await this.cacheService.get<Address>(
-                                `project-id-${accessTimeId}-owner`
-                            )) ?? null;
-                        // current owner update job
-                        await this.deploymentsService.removeLastDeployments(chainId, owner);
-                        await this.deploymentsService.removeListDeployments(chainId, owner);
-                        await this.projectService.removeProjectById(chainId, Number(accessTimeId));
-                        // if owner transferred, clean both
-                        if (lastOwner?.toLowerCase() != owner.toLowerCase()) {
-                            const deleteThis =
-                                lastOwner != null
-                                    ? lastOwner.toLowerCase()
-                                    : prevOwner.toLowerCase();
-                            await this.deploymentsService.removeLastDeployments(
-                                chainId,
-                                deleteThis as Address
-                            );
-                            await this.deploymentsService.removeListDeployments(
-                                chainId,
-                                deleteThis as Address
-                            );
-
-                            await this.projectService.updateProjectOwner(
-                                chainId,
-                                Number(accessTimeId),
-                                owner
-                            );
-
-                            await this.portalService.removeDomainVerify(
+                            const lastOwner =
+                                (await this.cacheService.get<Address>(
+                                    `project-id-${accessTimeId}-owner`
+                                )) ?? null;
+                            // current owner update job
+                            await this.deploymentsService.removeLastDeployments(chainId, owner);
+                            await this.deploymentsService.removeListDeployments(chainId, owner);
+                            await this.projectService.removeProjectById(
                                 chainId,
                                 Number(accessTimeId)
                             );
+                            // if owner transferred, clean both
+                            if (lastOwner?.toLowerCase() != owner.toLowerCase()) {
+                                const deleteThis =
+                                    lastOwner != null
+                                        ? lastOwner.toLowerCase()
+                                        : prevOwner.toLowerCase();
+                                await this.deploymentsService.removeLastDeployments(
+                                    chainId,
+                                    deleteThis as Address
+                                );
+                                await this.deploymentsService.removeListDeployments(
+                                    chainId,
+                                    deleteThis as Address
+                                );
+
+                                await this.projectService.updateProjectOwner(
+                                    chainId,
+                                    Number(accessTimeId),
+                                    owner
+                                );
+
+                                await this.portalService.removeDomainVerify(
+                                    chainId,
+                                    Number(accessTimeId)
+                                );
+                            }
+                            // update last update timestamp
+                            await this.cacheService.set("lastUpdateTimestamp", updateTimestamp, {
+                                ttl: 0
+                            });
+                            lastUpdateTimestamp = updateTimestamp;
                         }
-                        // update last update timestamp
-                        await this.cacheService.set("lastUpdateTimestamp", updateTimestamp, {
-                            ttl: 0
-                        });
-                        lastUpdateTimestamp = updateTimestamp;
                     }
                 }
                 this.syncBusy = false;
