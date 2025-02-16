@@ -358,7 +358,7 @@ export class PortalCreatorService {
 
             await project.save();
         } else {
-            project = (await this.projectModel.findOne({ id, chainId })) ?? null;
+            project = (await this.projectModel.findOne({ id, chainId }).exec()) ?? null;
         }
 
         return { project, projectFromChain };

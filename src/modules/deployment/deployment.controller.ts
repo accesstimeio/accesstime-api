@@ -6,7 +6,9 @@ import { LastDeploymentResponseDto, ListDeploymentResponseDto, RatesDto } from "
 import { DeploymentService } from "./deployment.service";
 
 @UsePipes(new ValidationPipe({ transform: true }))
-@Controller()
+@Controller({
+    version: "1"
+})
 export class DeploymentController {
     constructor(private readonly deploymentService: DeploymentService) {}
 
@@ -24,6 +26,11 @@ export class DeploymentController {
         type: Number,
         required: false
     })
+    @ApiQuery({
+        name: "pageCursor",
+        type: String,
+        required: false
+    })
     @ApiResponse({
         type: ListDeploymentResponseDto
     })
@@ -31,9 +38,10 @@ export class DeploymentController {
     listDeployments(
         @Param("chainId") chainId: number,
         @Param("address") address: Address,
-        @Query("page") page?: number
+        @Query("page") page?: number,
+        @Query("pageCursor") pageCursor?: string
     ) {
-        return this.deploymentService.listDeployments(chainId, address, page);
+        return this.deploymentService.listDeployments(chainId, address, page, pageCursor);
     }
 
     @ApiResponse({

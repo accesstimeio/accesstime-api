@@ -21,4 +21,8 @@ export class ListDeploymentResponseDto {
     @ValidateNested({ each: true })
     @Type(() => DeploymentDto)
     deployments: DeploymentDto[];
+
+    @Expose()
+    @ApiProperty()
+    pageCursor: string | null;
 }

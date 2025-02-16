@@ -2,7 +2,9 @@ import { Inject, Injectable, forwardRef } from "@nestjs/common";
 import { CACHE_MANAGER, Cache } from "@nestjs/cache-manager";
 import { GraphQLClient } from "graphql-request";
 import { Address } from "viem";
-import { Chain } from "@accesstimeio/accesstime-common";
+import { Chain, extractDomain, SUPPORTED_CHAIN } from "@accesstimeio/accesstime-common";
+
+import { SUBGRAPH_TYPE, SUPPORTED_SUBGRAPH_TYPES } from "src/common";
 
 import {
     SyncResponse,
@@ -25,29 +27,68 @@ import {
     CountProjectsDocument,
     CountWeeklyVoteProjectsDocument,
     CountWeeklyVoteProjectsResponse
-} from "./query";
+} from "./query/thegraph";
+
+import {
+    CountDeploymentsResponse as pCountDeploymentsResponse,
+    RatesDocument as pRatesDocument,
+    CountProjectsResponse as pCountProjectsResponse,
+    LastDeploymentsDocument as pLastDeploymentsDocument,
+    ListDeploymentsDocument as pListDeploymentsDocument,
+    CountDeploymentsDocument as pCountDeploymentsDocument,
+    SyncDocument as pSyncDocument,
+    ProjectByIdDocument as pProjectByIdDocument,
+    NewestProjectsResponse as pNewestProjectsResponse,
+    NewestProjectsDocument as pNewestProjectsDocument,
+    TopRatedProjectsResponse as pTopRatedProjectsResponse,
+    TopRatedProjectsDocument as pTopRatedProjectsDocument,
+    WeeklyPopularProjectsResponse as pWeeklyPopularProjectsResponse,
+    WeeklyPopularProjectsDocument as pWeeklyPopularProjectsDocument,
+    ProjectWeeklyVoteDocument as pProjectWeeklyVoteDocument,
+    ProjectWeeklyVoteResponse as pProjectWeeklyVoteResponse,
+    CountProjectsDocument as pCountProjectsDocument,
+    CountWeeklyVoteProjectsDocument as pCountWeeklyVoteProjectsDocument,
+    CountWeeklyVoteProjectsResponse as pCountWeeklyVoteProjectsResponse
+} from "./query/ponder";
 
 import { DeploymentService } from "../deployment/deployment.service";
 import { DeploymentDto, RatesDto } from "../deployment/dto";
 import { ProjectResponseDto } from "../project/dto";
 import { ProjectService } from "../project/project.service";
+import { PortalService } from "../portal/portal.service";
+import { FactoryService } from "../factory/factory.service";
 
 @Injectable()
 export class SubgraphService {
     private client: { [key: number]: GraphQLClient | null } = {};
     private clientUrls: { [key: number]: string } = {};
+    private clientTypes: { [key: number]: SUBGRAPH_TYPE } = {};
     private syncBusy: boolean = false;
     constructor(
         @Inject(CACHE_MANAGER) private cacheService: Cache,
         @Inject(forwardRef(() => DeploymentService))
         private readonly deploymentsService: DeploymentService,
         @Inject(forwardRef(() => ProjectService))
-        private readonly projectService: ProjectService
+        private readonly projectService: ProjectService,
+        @Inject(forwardRef(() => PortalService))
+        private readonly portalService: PortalService,
+        private readonly factoryService: FactoryService
     ) {
         const subgraphUrls = process.env.SUBGRAPH_URL.split(",");
+        const subgraphTypes = process.env.SUBGRAPH_TYPE.split(",");
+
         Chain.ids.forEach((chainId, index) => {
+            if (
+                !subgraphUrls[index] ||
+                !subgraphTypes[index] ||
+                !SUPPORTED_SUBGRAPH_TYPES.includes(subgraphTypes[index] as SUBGRAPH_TYPE)
+            ) {
+                throw new Error("Subgraph config is invalid!");
+            }
+
             this.client[chainId] = null;
             this.clientUrls[chainId] = subgraphUrls[index];
+            this.clientTypes[chainId] = subgraphTypes[index] as SUBGRAPH_TYPE;
         });
     }
 
@@ -58,53 +99,98 @@ export class SubgraphService {
         return this.client[chainId];
     }
 
+    private async syncCall(chainId: SUPPORTED_CHAIN) {
+        switch (this.clientTypes[chainId]) {
+            case "thegraph":
+                const result = await this.getClient(chainId).request(SyncDocument);
+                const { accessTimes } = result as { accessTimes: SyncResponse[] };
+                return accessTimes.reverse();
+            case "ponder":
+                const presult = await this.getClient(chainId).request(pSyncDocument);
+                const { accessTimes: paccessTimes } = presult as {
+                    accessTimes: { items: SyncResponse[] };
+                };
+                return Array.isArray(paccessTimes?.items) ? paccessTimes.items.reverse() : [];
+            default:
+                return [];
+        }
+    }
+
     async sync() {
         try {
             if (!this.syncBusy) {
-                const chainId = 84532; // temporary
                 this.syncBusy = true;
-                const result = await this.getClient(chainId).request(SyncDocument);
-                let lastUpdateTimestamp =
-                    (await this.cacheService.get<string>("lastUpdateTimestamp")) ?? "0";
-                const { accessTimes } = result as { accessTimes: SyncResponse[] };
-                const reversedAccessTimes = accessTimes.reverse();
-                for (const accessTime of reversedAccessTimes) {
-                    const { owner, prevOwner, updateTimestamp, accessTimeId } = accessTime;
-                    if (BigInt(updateTimestamp) > BigInt(lastUpdateTimestamp)) {
-                        const lastOwner =
-                            (await this.cacheService.get<Address>(
-                                `project-id-${accessTimeId}-owner`
-                            )) ?? null;
-                        // current owner update job
-                        await this.deploymentsService.removeLastDeployments(chainId, owner);
-                        await this.deploymentsService.removeListDeployments(chainId, owner);
-                        await this.projectService.removeProjectById(chainId, Number(accessTimeId));
-                        // if owner transferred, clean both
-                        if (lastOwner?.toLowerCase() != owner.toLowerCase()) {
-                            const deleteThis =
-                                lastOwner != null
-                                    ? lastOwner.toLowerCase()
-                                    : prevOwner.toLowerCase();
-                            await this.deploymentsService.removeLastDeployments(
-                                chainId,
-                                deleteThis as Address
-                            );
-                            await this.deploymentsService.removeListDeployments(
-                                chainId,
-                                deleteThis as Address
-                            );
+                for (let i = 0; i < Chain.ids.length; i++) {
+                    const chainId = Chain.ids[i];
+                    const factory = this.factoryService.client[chainId];
 
-                            await this.projectService.updateProjectOwner(
+                    const reversedAccessTimes = await this.syncCall(chainId);
+
+                    let lastUpdateTimestamp =
+                        (await this.cacheService.get<string>("lastUpdateTimestamp")) ?? "0";
+                    for (const accessTime of reversedAccessTimes) {
+                        const { owner, prevOwner, updateTimestamp, accessTimeId, id } = accessTime;
+                        if (BigInt(updateTimestamp) > BigInt(lastUpdateTimestamp)) {
+                            // check domain changes
+                            const [, , , , , , currentDomain] =
+                                await factory.read.deploymentDetails([id]);
+                            const projectDomain = await this.portalService.getProjectDomain(
                                 chainId,
-                                Number(accessTimeId),
-                                owner
+                                Number(accessTimeId)
                             );
+                            if (
+                                projectDomain &&
+                                projectDomain.domain != extractDomain(currentDomain)
+                            ) {
+                                await this.portalService.removeDomainVerify(
+                                    chainId,
+                                    Number(accessTimeId)
+                                );
+                            }
+
+                            const lastOwner =
+                                (await this.cacheService.get<Address>(
+                                    `project-id-${accessTimeId}-owner`
+                                )) ?? null;
+                            // current owner update job
+                            await this.deploymentsService.removeLastDeployments(chainId, owner);
+                            await this.deploymentsService.removeListDeployments(chainId, owner);
+                            await this.projectService.removeProjectById(
+                                chainId,
+                                Number(accessTimeId)
+                            );
+                            // if owner transferred, clean both
+                            if (lastOwner?.toLowerCase() != owner.toLowerCase()) {
+                                const deleteThis =
+                                    lastOwner != null
+                                        ? lastOwner.toLowerCase()
+                                        : prevOwner.toLowerCase();
+                                await this.deploymentsService.removeLastDeployments(
+                                    chainId,
+                                    deleteThis as Address
+                                );
+                                await this.deploymentsService.removeListDeployments(
+                                    chainId,
+                                    deleteThis as Address
+                                );
+
+                                await this.projectService.updateProjectOwner(
+                                    chainId,
+                                    Number(accessTimeId),
+                                    owner
+                                );
+
+                                await this.portalService.removeDomainVerify(
+                                    chainId,
+                                    Number(accessTimeId)
+                                );
+                            }
+                            // update last update timestamp
+                            await this.cacheService.set("lastUpdateTimestamp", updateTimestamp, {
+                                ttl: 0
+                            });
+                            lastUpdateTimestamp = updateTimestamp;
                         }
-                        // update last update timestamp
-                        await this.cacheService.set("lastUpdateTimestamp", updateTimestamp, {
-                            ttl: 0
-                        });
-                        lastUpdateTimestamp = updateTimestamp;
                     }
                 }
                 this.syncBusy = false;
@@ -115,32 +201,93 @@ export class SubgraphService {
         }
     }
 
-    async lastDeployments(chainId: number, address: Address) {
+    async lastDeployments(chainId: number, address: Address): Promise<DeploymentDto[]> {
         try {
-            const result = await this.getClient(chainId).request(LastDeploymentsDocument, {
-                owner: address,
-                limit: Number(process.env.LAST_DEPLOYMENTS_LIMIT)
-            });
-            const { accessTimes } = result as { accessTimes: DeploymentDto[] };
+            switch (this.clientTypes[chainId]) {
+                case "thegraph":
+                    const result = await this.getClient(chainId).request(LastDeploymentsDocument, {
+                        owner: address,
+                        limit: Number(process.env.LAST_DEPLOYMENTS_LIMIT)
+                    });
+                    const { accessTimes } = result as { accessTimes: DeploymentDto[] };
 
-            return accessTimes;
+                    return accessTimes;
+                case "ponder":
+                    const presult = await this.getClient(chainId).request(
+                        pLastDeploymentsDocument,
+                        {
+                            owner: address.toLowerCase(),
+                            limit: Number(process.env.LAST_DEPLOYMENTS_LIMIT)
+                        }
+                    );
+                    const { accessTimes: paccessTimes } = presult as {
+                        accessTimes: { items: DeploymentDto[] };
+                    };
+
+                    return Array.isArray(paccessTimes?.items) ? paccessTimes.items : [];
+                default:
+                    return [];
+            }
         } catch (_err) {
             throw new Error("[lastDeployments]: Subgraph query failed!");
         }
     }
 
-    async listDeployments(chainId: number, address: Address, page?: number) {
+    async listDeployments(
+        chainId: number,
+        address: Address,
+        page?: number,
+        ponderPageCursor?: string | null
+    ): Promise<{ deployments: DeploymentDto[]; pageCursor: string | null }> {
         try {
             const limit = Number(process.env.PAGE_ITEM_LIMIT);
             const skip = page ? page * limit : 0;
-            const result = await this.getClient(chainId).request(ListDeploymentsDocument, {
-                owner: address,
-                limit,
-                skip
-            });
-            const { accessTimes } = result as { accessTimes: DeploymentDto[] };
+            ponderPageCursor ??= null;
 
-            return accessTimes;
+            switch (this.clientTypes[chainId]) {
+                case "thegraph":
+                    const result = await this.getClient(chainId).request(ListDeploymentsDocument, {
+                        owner: address,
+                        limit,
+                        skip
+                    });
+                    const { accessTimes } = result as { accessTimes: DeploymentDto[] };
+
+                    return {
+                        deployments: accessTimes,
+                        pageCursor: null
+                    };
+                case "ponder":
+                    const presult = await this.getClient(chainId).request(
+                        pListDeploymentsDocument,
+                        {
+                            owner: address.toLowerCase(),
+                            limit,
+                            after: ponderPageCursor
+                        }
+                    );
+                    const { accessTimes: paccessTimes } = presult as {
+                        accessTimes: {
+                            items: DeploymentDto[];
+                            pageInfo: { endCursor: string | null };
+                        };
+                    };
+
+                    return Array.isArray(paccessTimes?.items)
+                        ? {
+                              deployments: paccessTimes.items,
+                              pageCursor: paccessTimes.pageInfo.endCursor
+                          }
+                        : {
+                              deployments: [],
+                              pageCursor: null
+                          };
+                default:
+                    return {
+                        deployments: [],
+                        pageCursor: null
+                    };
+            }
         } catch (_err) {
             throw new Error("[listDeployments]: Subgraph query failed!");
         }
@@ -148,12 +295,29 @@ export class SubgraphService {
 
     async countDeployments(chainId: number, address: Address): Promise<CountDeploymentsResponse> {
         try {
-            const result = await this.getClient(chainId).request(CountDeploymentsDocument, {
-                owner: address
-            });
-            const { owner } = result as { owner: CountDeploymentsResponse };
+            switch (this.clientTypes[chainId]) {
+                case "thegraph":
+                    const result = await this.getClient(chainId).request(CountDeploymentsDocument, {
+                        owner: address
+                    });
+                    const { owner } = result as { owner: CountDeploymentsResponse };
 
-            return owner == null ? { deploymentCount: "0" } : owner;
+                    return owner == null ? { deploymentCount: "0" } : owner;
+                case "ponder":
+                    const presult = await this.getClient(chainId).request(
+                        pCountDeploymentsDocument,
+                        {
+                            owner: address.toLowerCase()
+                        }
+                    );
+                    const { owner: powner } = presult as { owner: pCountDeploymentsResponse };
+
+                    return powner == null
+                        ? { deploymentCount: "0" }
+                        : { deploymentCount: powner.deploymentCount.toString() };
+                default:
+                    return { deploymentCount: "0" };
+            }
         } catch (_err) {
             throw new Error("[countDeployments]: Subgraph query failed!");
         }
@@ -161,12 +325,30 @@ export class SubgraphService {
 
     async projectById(chainId: number, id: number) {
         try {
-            const result = await this.getClient(chainId).request(ProjectByIdDocument, {
-                id
-            });
-            const { accessTimes } = result as { accessTimes: ProjectResponseDto[] };
+            switch (this.clientTypes[chainId]) {
+                case "thegraph":
+                    const result = await this.getClient(chainId).request(ProjectByIdDocument, {
+                        id
+                    });
+                    const { accessTimes } = result as { accessTimes: ProjectResponseDto[] };
 
-            return accessTimes;
+                    return accessTimes;
+                case "ponder":
+                    const presult = await this.getClient(chainId).request(pProjectByIdDocument, {
+                        id
+                    });
+                    const { accessTimes: paccessTimes } = presult as {
+                        accessTimes: { items: ProjectResponseDto[] };
+                    };
+
+                    if (Array.isArray(paccessTimes?.items) && paccessTimes?.items.length > 0) {
+                        return paccessTimes.items;
+                    } else {
+                        return [];
+                    }
+                default:
+                    return [];
+            }
         } catch (_err) {
             throw new Error("[projectById]: Subgraph query failed!");
         }
@@ -174,10 +356,22 @@ export class SubgraphService {
 
     async rates(chainId: number): Promise<RatesDto[]> {
         try {
-            const result = await this.getClient(chainId).request(RatesDocument, {});
-            const { factoryRates } = result as { factoryRates: RatesDto[] };
+            switch (this.clientTypes[chainId]) {
+                case "thegraph":
+                    const result = await this.getClient(chainId).request(RatesDocument, {});
+                    const { factoryRates } = result as { factoryRates: RatesDto[] };
 
-            return factoryRates == null ? [] : factoryRates;
+                    return factoryRates == null ? [] : factoryRates;
+                case "ponder":
+                    const presult = await this.getClient(chainId).request(pRatesDocument, {});
+                    const { factoryRates: pfactoryRates } = presult as {
+                        factoryRates: { items: RatesDto[] };
+                    };
+
+                    return Array.isArray(pfactoryRates?.items) ? pfactoryRates.items : [];
+                default:
+                    return [];
+            }
         } catch (_err) {
             throw new Error("[rates]: Subgraph query failed!");
         }
@@ -186,16 +380,37 @@ export class SubgraphService {
     async countProjects(chainId: number, paymentMethods?: Address[]): Promise<number> {
         try {
             paymentMethods ??= [];
-            const result = await this.getClient(chainId).request(CountProjectsDocument, {
-                paymentMethods
-            });
-            const { accessTimes } = result as { accessTimes: CountProjectsResponse[] };
 
-            return accessTimes == null
-                ? 0
-                : accessTimes.length != 0
-                  ? Number(accessTimes[0].accessTimeId) + 1
-                  : 0;
+            switch (this.clientTypes[chainId]) {
+                case "thegraph":
+                    const result = await this.getClient(chainId).request(CountProjectsDocument, {
+                        paymentMethods
+                    });
+                    const { accessTimes } = result as { accessTimes: CountProjectsResponse[] };
+
+                    return paymentMethods.length == 0 || accessTimes == null
+                        ? 0
+                        : accessTimes.length != 0
+                          ? Number(accessTimes[0].accessTimeId) + 1
+                          : 0;
+                case "ponder":
+                    const presult = await this.getClient(chainId).request(pCountProjectsDocument, {
+                        // eslint-disable-next-line prettier/prettier
+                        filter: { "AND": paymentMethods.map((paymentMethod) => (
+                            {
+                                // eslint-disable-next-line prettier/prettier
+                                "paymentMethods_has": paymentMethod.toLowerCase()
+                            }))
+                        }
+                    });
+                    const { accessTimes: paccessTimes } = presult as {
+                        accessTimes: pCountProjectsResponse;
+                    };
+
+                    return paccessTimes?.totalCount ? paccessTimes.totalCount : 0;
+                default:
+                    return 0;
+            }
         } catch (_err) {
             throw new Error("[countProjects]: Subgraph query failed!");
         }
@@ -204,20 +419,62 @@ export class SubgraphService {
     async newestProjects(
         chainId: number,
         page?: number,
-        paymentMethods?: Address[]
-    ): Promise<NewestProjectsResponse[]> {
+        paymentMethods?: Address[],
+        ponderPageCursor?: string | null
+    ): Promise<{ projects: NewestProjectsResponse[]; pageCursor: string | null }> {
         try {
             const limit = Number(process.env.PAGE_ITEM_LIMIT);
             const skip = page ? (page - 1) * limit : 0;
             paymentMethods ??= [];
-            const result = await this.getClient(chainId).request(NewestProjectsDocument, {
-                limit,
-                skip,
-                paymentMethods
-            });
-            const { accessTimes } = result as { accessTimes: NewestProjectsResponse[] };
+            ponderPageCursor ??= null;
 
-            return accessTimes == null ? [] : accessTimes;
+            switch (this.clientTypes[chainId]) {
+                case "thegraph":
+                    const result = await this.getClient(chainId).request(NewestProjectsDocument, {
+                        limit,
+                        skip,
+                        paymentMethods
+                    });
+                    const { accessTimes } = result as { accessTimes: NewestProjectsResponse[] };
+
+                    return accessTimes == null
+                        ? { projects: [], pageCursor: null }
+                        : { projects: accessTimes, pageCursor: null };
+                case "ponder":
+                    const presult = await this.getClient(chainId).request(pNewestProjectsDocument, {
+                        limit,
+                        after: ponderPageCursor,
+                        // eslint-disable-next-line prettier/prettier
+                        filter: { "AND": paymentMethods.map((paymentMethod) => (
+                            {
+                                // eslint-disable-next-line prettier/prettier
+                                "paymentMethods_has": paymentMethod.toLowerCase()
+                            }))
+                        }
+                    });
+                    const { accessTimes: paccessTimes } = presult as {
+                        accessTimes: {
+                            items: pNewestProjectsResponse[];
+                            pageInfo: { endCursor: string | null };
+                        };
+                    };
+
+                    if (Array.isArray(paccessTimes?.items)) {
+                        return {
+                            projects: paccessTimes.items.map((item) => ({
+                                id: item.id,
+                                accessTimeId: item.accessTimeId,
+                                totalVotePoint: item.totalVotePoint,
+                                totalVoteParticipantCount: item.totalVoteParticipantCount.toString()
+                            })),
+                            pageCursor: paccessTimes.pageInfo.endCursor
+                        };
+                    } else {
+                        return { projects: [], pageCursor: null };
+                    }
+                default:
+                    return { projects: [], pageCursor: null };
+            }
         } catch (_err) {
             throw new Error("[newestProjects]: Subgraph query failed!");
         }
@@ -226,20 +483,65 @@ export class SubgraphService {
     async topRatedProjects(
         chainId: number,
         page?: number,
-        paymentMethods?: Address[]
-    ): Promise<TopRatedProjectsResponse[]> {
+        paymentMethods?: Address[],
+        ponderPageCursor?: string | null
+    ): Promise<{ projects: TopRatedProjectsResponse[]; pageCursor: string | null }> {
         try {
             const limit = Number(process.env.PAGE_ITEM_LIMIT);
             const skip = page ? (page - 1) * limit : 0;
             paymentMethods ??= [];
-            const result = await this.getClient(chainId).request(TopRatedProjectsDocument, {
-                limit,
-                skip,
-                paymentMethods
-            });
-            const { accessTimes } = result as { accessTimes: TopRatedProjectsResponse[] };
+            ponderPageCursor ??= null;
 
-            return accessTimes == null ? [] : accessTimes;
+            switch (this.clientTypes[chainId]) {
+                case "thegraph":
+                    const result = await this.getClient(chainId).request(TopRatedProjectsDocument, {
+                        limit,
+                        skip,
+                        paymentMethods
+                    });
+                    const { accessTimes } = result as { accessTimes: TopRatedProjectsResponse[] };
+
+                    return accessTimes == null
+                        ? { projects: [], pageCursor: null }
+                        : { projects: accessTimes, pageCursor: null };
+                case "ponder":
+                    const presult = await this.getClient(chainId).request(
+                        pTopRatedProjectsDocument,
+                        {
+                            limit,
+                            after: ponderPageCursor,
+                            // eslint-disable-next-line prettier/prettier
+                            filter: { "AND": paymentMethods.map((paymentMethod) => (
+                                {
+                                    // eslint-disable-next-line prettier/prettier
+                                    "paymentMethods_has": paymentMethod.toLowerCase()
+                                }))
+                            }
+                        }
+                    );
+                    const { accessTimes: paccessTimes } = presult as {
+                        accessTimes: {
+                            items: pTopRatedProjectsResponse[];
+                            pageInfo: { endCursor: string | null };
+                        };
+                    };
+
+                    if (Array.isArray(paccessTimes?.items)) {
+                        return {
+                            projects: paccessTimes.items.map((item) => ({
+                                id: item.id,
+                                accessTimeId: item.accessTimeId,
+                                totalVotePoint: item.totalVotePoint,
+                                totalVoteParticipantCount: item.totalVoteParticipantCount.toString()
+                            })),
+                            pageCursor: paccessTimes.pageInfo.endCursor
+                        };
+                    } else {
+                        return { projects: [], pageCursor: null };
+                    }
+                default:
+                    return { projects: [], pageCursor: null };
+            }
         } catch (_err) {
             throw new Error("[topRatedProjects]: Subgraph query failed!");
         }
@@ -249,21 +551,76 @@ export class SubgraphService {
         chainId: number,
         epochWeek: number,
         page?: number,
-        paymentMethods?: Address[]
-    ): Promise<WeeklyPopularProjectsResponse[]> {
+        paymentMethods?: Address[],
+        ponderPageCursor?: string | null
+    ): Promise<{ projects: WeeklyPopularProjectsResponse[]; pageCursor: string | null }> {
         try {
             const limit = Number(process.env.PAGE_ITEM_LIMIT);
             const skip = page ? (page - 1) * limit : 0;
             paymentMethods ??= [];
-            const result = await this.getClient(chainId).request(WeeklyPopularProjectsDocument, {
-                epochWeek,
-                limit,
-                skip,
-                paymentMethods
-            });
-            const { accessVotes } = result as { accessVotes: WeeklyPopularProjectsResponse[] };
+            ponderPageCursor ??= null;
 
-            return accessVotes == null ? [] : accessVotes;
+            switch (this.clientTypes[chainId]) {
+                case "thegraph":
+                    const result = await this.getClient(chainId).request(
+                        WeeklyPopularProjectsDocument,
+                        {
+                            epochWeek,
+                            limit,
+                            skip,
+                            paymentMethods
+                        }
+                    );
+                    const { accessVotes } = result as {
+                        accessVotes: WeeklyPopularProjectsResponse[];
+                    };
+
+                    return accessVotes == null
+                        ? { projects: [], pageCursor: null }
+                        : { projects: accessVotes, pageCursor: null };
+                case "ponder":
+                    const filterContent: any[] = paymentMethods.map((paymentMethod) => ({
+                        // eslint-disable-next-line prettier/prettier
+                        "accessTimePaymentMethods_has": paymentMethod.toLowerCase()
+                    }));
+                    // eslint-disable-next-line prettier/prettier
+                    filterContent.push({ "epochWeek": epochWeek.toString() });
+
+                    const presult = await this.getClient(chainId).request(
+                        pWeeklyPopularProjectsDocument,
+                        {
+                            limit,
+                            after: ponderPageCursor,
+                            filter: {
+                                AND: filterContent
+                            }
+                        }
+                    );
+                    const { accessVotes: paccessVotes } = presult as {
+                        accessVotes: {
+                            items: pWeeklyPopularProjectsResponse[];
+                            pageInfo: { endCursor: string | null };
+                        };
+                    };
+
+                    if (Array.isArray(paccessVotes?.items)) {
+                        return {
+                            projects: paccessVotes.items.map((item) => ({
+                                accessTime: {
+                                    id: item.accessTimeAddress,
+                                    accessTimeId: item.accessTimeId
+                                },
+                                participantCount: item.participantCount.toString(),
+                                votePoint: item.votePoint
+                            })),
+                            pageCursor: paccessVotes.pageInfo.endCursor
+                        };
+                    } else {
+                        return { projects: [], pageCursor: null };
+                    }
+                default:
+                    return { projects: [], pageCursor: null };
+            }
         } catch (_err) {
             throw new Error("[weeklyPopularProjects]: Subgraph query failed!");
         }
@@ -275,13 +632,45 @@ export class SubgraphService {
         accessTime: Address
     ): Promise<ProjectWeeklyVoteResponse[]> {
         try {
-            const result = await this.getClient(chainId).request(ProjectWeeklyVoteDocument, {
-                epochWeek,
-                accessTime
-            });
-            const { accessVotes } = result as { accessVotes: ProjectWeeklyVoteResponse[] };
+            switch (this.clientTypes[chainId]) {
+                case "thegraph":
+                    const result = await this.getClient(chainId).request(
+                        ProjectWeeklyVoteDocument,
+                        {
+                            epochWeek,
+                            accessTime
+                        }
+                    );
+                    const { accessVotes } = result as {
+                        accessVotes: ProjectWeeklyVoteResponse[];
+                    };
 
-            return accessVotes == null ? [] : accessVotes;
+                    return accessVotes == null ? [] : accessVotes;
+                case "ponder":
+                    const presult = await this.getClient(chainId).request(
+                        pProjectWeeklyVoteDocument,
+                        {
+                            epochWeek,
+                            accessTime: accessTime.toLowerCase()
+                        }
+                    );
+                    const { accessVotes: paccessVotes } = presult as {
+                        accessVotes: {
+                            items: pProjectWeeklyVoteResponse[];
+                        };
+                    };
+
+                    if (Array.isArray(paccessVotes?.items)) {
+                        return paccessVotes.items.map((item) => ({
+                            participantCount: item.participantCount.toString(),
+                            votePoint: item.votePoint
+                        }));
+                    } else {
+                        return [];
+                    }
+                default:
+                    return [];
+            }
         } catch (_err) {
             throw new Error("[projectWeeklyVote]: Subgraph query failed!");
         }
@@ -294,13 +683,47 @@ export class SubgraphService {
     ): Promise<number> {
         try {
             paymentMethods ??= [];
-            // to-do: CountWeeklyVoteProjectsDocument need to be filtered with paymentMethods
-            const result = await this.getClient(chainId).request(CountWeeklyVoteProjectsDocument, {
-                epochWeek: epochWeek.toString()
-            });
-            const { weeklyVote } = result as { weeklyVote: CountWeeklyVoteProjectsResponse };
 
-            return weeklyVote == null ? 0 : Number(weeklyVote.participantCount);
+            switch (this.clientTypes[chainId]) {
+                case "thegraph":
+                    const result = await this.getClient(chainId).request(
+                        CountWeeklyVoteProjectsDocument,
+                        {
+                            epochWeek: epochWeek.toString(),
+                            paymentMethods
+                        }
+                    );
+                    const { weeklyVotes } = result as {
+                        weeklyVotes: CountWeeklyVoteProjectsResponse;
+                    };
+
+                    return weeklyVotes == null || !weeklyVotes[0]
+                        ? 0
+                        : Number(weeklyVotes[0].accessTimes.length);
+                case "ponder":
+                    const filterContent: any[] = paymentMethods.map((paymentMethod) => ({
+                        // eslint-disable-next-line prettier/prettier
+                        "accessTimePaymentMethods_has": paymentMethod.toLowerCase()
+                    }));
+                    // eslint-disable-next-line prettier/prettier
+                    filterContent.push({ "epochWeek": epochWeek.toString() });
+
+                    const presult = await this.getClient(chainId).request(
+                        pCountWeeklyVoteProjectsDocument,
+                        {
+                            filter: {
+                                AND: filterContent
+                            }
+                        }
+                    );
+                    const { accessVotes: paccessVotes } = presult as {
+                        accessVotes: pCountWeeklyVoteProjectsResponse;
+                    };
+
+                    return paccessVotes?.totalCount ? paccessVotes.totalCount : 0;
+                default:
+                    return 0;
+            }
         } catch (_err) {
             throw new Error("[countProjects]: Subgraph query failed!");
         }

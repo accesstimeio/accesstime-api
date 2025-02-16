@@ -1,5 +1,6 @@
 import { WEEK_IN_SECONDS } from "src/common";
 import { Address, encodeAbiParameters, keccak256 } from "viem";
+import { signatureCheck } from "./signature-check";
 
 const nowDate = () => Math.floor(Date.now() / 1000);
 
@@ -19,4 +20,4 @@ const generateFilename = (fileCategory: string, caller: Address) =>
         )
     );
 
-export { getEpochWeek, aWeekAgo, generateFilename };
+export { getEpochWeek, aWeekAgo, generateFilename, signatureCheck };

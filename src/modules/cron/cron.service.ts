@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
-import { SubgraphService } from "../subgraph/subgraph.service";
 import { Cron, CronExpression } from "@nestjs/schedule";
+
+import { SubgraphService } from "../subgraph/subgraph.service";
 
 @Injectable()
 export class CronService {

@@ -1,29 +1,49 @@
 import { Controller, Get, Param, Post, Query, UsePipes, ValidationPipe } from "@nestjs/common";
-import { ApiQuery, ApiResponse } from "@nestjs/swagger";
+import { ApiHeaders, ApiQuery, ApiResponse } from "@nestjs/swagger";
 import { Address } from "viem";
 import { SUPPORTED_SORT_TYPE } from "@accesstimeio/accesstime-common";
+import { days, minutes, Throttle } from "@nestjs/throttler";
 
 import { Signer } from "src/decorators/signer.decorator";
 
 import { PortalService } from "./portal.service";
 import {
+    CheckDomainVerifyResponseDto,
     ExploreResponseDto,
+    FeaturedsResponseDto,
     ProjectDto,
     ProjectToggleFavoriteResponseDto,
     ProjectVotesResponseDto,
+    RequestDomainVerifyResponseDto,
     UserFavoritesResponseDto
 } from "./dto";
 
 @UsePipes(new ValidationPipe({ transform: true }))
-@Controller()
+@Controller({
+    version: "1"
+})
 export class PortalController {
     constructor(private readonly portalService: PortalService) {}
 
+    @ApiResponse({
+        type: FeaturedsResponseDto,
+        isArray: true
+    })
     @Get("/featureds")
     getFeatureds() {
-        return true;
+        return this.portalService.getFeatureds();
     }
 
+    @ApiHeaders([
+        {
+            name: "X-ACCESSTIME-AUTH-MESSAGE",
+            required: false
+        },
+        {
+            name: "X-ACCESSTIME-AUTH-SIGNATURE",
+            required: false
+        }
+    ])
     @ApiQuery({
         name: "page",
         type: Number,
@@ -39,6 +59,11 @@ export class PortalController {
         type: String,
         required: false
     })
+    @ApiQuery({
+        name: "pageCursor",
+        type: String,
+        required: false
+    })
     @ApiResponse({
         type: ExploreResponseDto
     })
@@ -48,13 +73,31 @@ export class PortalController {
         @Query("page") page: number,
         @Query("sort") sort: SUPPORTED_SORT_TYPE,
         @Query("paymentMethods") paymentMethods: string,
+        @Query("pageCursor") pageCursor: string,
         @Signer(false) signer: Address
     ) {
         const paymentMethods_: Address[] | undefined =
             paymentMethods && (paymentMethods.split(",") as Address[]);
-        return this.portalService.getExplore(chainId, page, sort, paymentMethods_, signer);
+        return this.portalService.getExplore(
+            chainId,
+            page,
+            sort,
+            paymentMethods_,
+            pageCursor,
+            signer
+        );
     }
 
+    @ApiHeaders([
+        {
+            name: "X-ACCESSTIME-AUTH-MESSAGE",
+            required: true
+        },
+        {
+            name: "X-ACCESSTIME-AUTH-SIGNATURE",
+            required: true
+        }
+    ])
     @ApiQuery({
         name: "page",
         type: Number,
@@ -72,6 +115,16 @@ export class PortalController {
         return this.portalService.getFavorites(chainId, signer, page);
     }
 
+    @ApiHeaders([
+        {
+            name: "X-ACCESSTIME-AUTH-MESSAGE",
+            required: false
+        },
+        {
+            name: "X-ACCESSTIME-AUTH-SIGNATURE",
+            required: false
+        }
+    ])
     @ApiResponse({
         type: ProjectDto
     })
@@ -84,15 +137,26 @@ export class PortalController {
         return this.portalService.getProjectById(chainId, id, signer);
     }
 
+    @ApiHeaders([
+        {
+            name: "X-ACCESSTIME-AUTH-MESSAGE",
+            required: true
+        },
+        {
+            name: "X-ACCESSTIME-AUTH-SIGNATURE",
+            required: true
+        }
+    ])
     @ApiResponse({
         type: ProjectToggleFavoriteResponseDto
     })
+    @Throttle({ default: { limit: 10, ttl: days(1) } })
     @Post("/project/:chainId/:id/toggle-favorite")
     toggleFavorite(
         @Param("chainId") chainId: number,
         @Param("id") id: number,
         @Signer(true) signer: Address
-    ): Promise<{ isFavoritedNow: boolean | null }> {
+    ) {
         return this.portalService.toggleFavorite(chainId, id, signer);
     }
 
@@ -102,5 +166,89 @@ export class PortalController {
     @Get("/project/:chainId/:id/votes")
     async getProjectVotes(@Param("chainId") chainId: number, @Param("id") id: number) {
         return this.portalService.getProjectVotes(chainId, id);
+    }
+
+    @ApiHeaders([
+        {
+            name: "X-ACCESSTIME-AUTH-MESSAGE",
+            required: true
+        },
+        {
+            name: "X-ACCESSTIME-AUTH-SIGNATURE",
+            required: true
+        }
+    ])
+    @Post("/project/:chainId/:id/toggle-featured")
+    getToggleFeatured(
+        @Param("chainId") chainId: number,
+        @Param("id") id: number,
+        @Signer(true) signer: Address
+    ) {
+        return this.portalService.toggleFeatured(chainId, id, signer);
+    }
+
+    @ApiHeaders([
+        {
+            name: "X-ACCESSTIME-AUTH-MESSAGE",
+            required: true
+        },
+        {
+            name: "X-ACCESSTIME-AUTH-SIGNATURE",
+            required: true
+        }
+    ])
+    @Post("/project/:chainId/:id/toggle-portal-verify")
+    getTogglePortalVerify(
+        @Param("chainId") chainId: number,
+        @Param("id") id: number,
+        @Signer(true) signer: Address
+    ) {
+        return this.portalService.togglePortalVerify(chainId, id, signer);
+    }
+
+    @ApiHeaders([
+        {
+            name: "X-ACCESSTIME-AUTH-MESSAGE",
+            required: true
+        },
+        {
+            name: "X-ACCESSTIME-AUTH-SIGNATURE",
+            required: true
+        }
+    ])
+    @ApiResponse({
+        type: RequestDomainVerifyResponseDto
+    })
+    @Throttle({ default: { limit: 10, ttl: minutes(5) } })
+    @Post("/project/:chainId/:id/request-domain-verify")
+    requestDomainVerify(
+        @Param("chainId") chainId: number,
+        @Param("id") id: number,
+        @Signer(true) signer: Address
+    ) {
+        return this.portalService.requestDomainVerify(chainId, id, signer);
+    }
+
+    @ApiHeaders([
+        {
+            name: "X-ACCESSTIME-AUTH-MESSAGE",
+            required: true
+        },
+        {
+            name: "X-ACCESSTIME-AUTH-SIGNATURE",
+            required: true
+        }
+    ])
+    @ApiResponse({
+        type: CheckDomainVerifyResponseDto
+    })
+    @Throttle({ default: { limit: 10, ttl: days(1) } })
+    @Post("/project/:chainId/:id/check-domain-verify")
+    checkDomainVerify(
+        @Param("chainId") chainId: number,
+        @Param("id") id: number,
+        @Signer(true) signer: Address
+    ) {
+        return this.portalService.checkDomainVerify(chainId, id, signer);
     }
 }

@@ -14,6 +14,10 @@ import { CronModule } from "./modules/cron/cron.module";
 import { PortalModule } from "./modules/portal/portal.module";
 import { PortalCreatorModule } from "./modules/portal-creator/portal-creator.module";
 import { NestMinioModule } from "nestjs-minio";
+import { PortalLinkModule } from "./modules/portal-link/portal-link.module";
+import { FactoryModule } from "./modules/factory/factory.module";
+import { minutes, ThrottlerModule } from "@nestjs/throttler";
+import { ThrottlerStorageRedisService } from "nestjs-throttler-storage-redis";
 
 const NODE_ENV = process.env.NODE_ENV;
 
@@ -39,7 +43,9 @@ const NODE_ENV = process.env.NODE_ENV;
                 MINIO_SSL: Joi.string().required(),
                 MINIO_ACCESS_KEY: Joi.string().required(),
                 MINIO_SECRET_KEY: Joi.string().required(),
-                MINIO_BUCKET_NAME: Joi.string().required()
+                MINIO_BUCKET_NAME: Joi.string().required(),
+                RRDA_URL: Joi.string().required(),
+                SUBGRAPH_TYPE: Joi.string().required() // thegraph - ponder
             })
         }),
         ScheduleModule.forRoot(),
@@ -55,6 +61,7 @@ const NODE_ENV = process.env.NODE_ENV;
         CronModule,
         PortalModule,
         PortalCreatorModule,
+        PortalLinkModule,
         RouterModule.register([
             {
                 path: "portal",
@@ -63,6 +70,10 @@ const NODE_ENV = process.env.NODE_ENV;
                     {
                         path: "creator",
                         module: PortalCreatorModule
+                    },
+                    {
+                        path: "link",
+                        module: PortalLinkModule
                     }
                 ]
             },
@@ -88,6 +99,23 @@ const NODE_ENV = process.env.NODE_ENV;
                 useSSL: process.env.MINIO_SSL == "true",
                 accessKey: process.env.MINIO_ACCESS_KEY,
                 secretKey: process.env.MINIO_SECRET_KEY
+            })
+        }),
+        FactoryModule,
+        ThrottlerModule.forRootAsync({
+            useFactory: () => ({
+                throttlers: [
+                    {
+                        name: "default",
+                        ttl: minutes(1),
+                        limit: 25
+                    }
+                ],
+                storage: new ThrottlerStorageRedisService({
+                    host: process.env.REDIS_HOST,
+                    port: Number(process.env.REDIS_PORT),
+                    password: process.env.REDIS_PASSWORD
+                })
             })
         })
     ],

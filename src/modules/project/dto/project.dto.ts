@@ -13,6 +13,10 @@ export class ProjectResponseDto {
 
     @Expose()
     @ApiProperty()
+    removedExtraTimes: string[];
+
+    @Expose()
+    @ApiProperty()
     nextOwner: Address;
 
     @Expose()
@@ -22,6 +26,10 @@ export class ProjectResponseDto {
     @Expose()
     @ApiProperty()
     packages: string[];
+
+    @Expose()
+    @ApiProperty()
+    removedPackages: string[];
 
     @Expose()
     @ApiProperty()

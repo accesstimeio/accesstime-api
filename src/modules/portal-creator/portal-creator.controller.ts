@@ -14,6 +14,8 @@ import { FileInterceptor } from "@nestjs/platform-express";
 import { Address } from "viem";
 import { Express } from "express";
 import { Portal } from "@accesstimeio/accesstime-common";
+import { ApiHeaders } from "@nestjs/swagger";
+import { days, Throttle } from "@nestjs/throttler";
 
 import { Signer } from "src/decorators/signer.decorator";
 import { FileTypeValidationPipe } from "src/pipes/file-type.validation.pipe";
@@ -27,10 +29,23 @@ import {
 } from "./dto";
 
 @UsePipes(new ValidationPipe({ transform: true }))
-@Controller()
+@Controller({
+    version: "1"
+})
 export class PortalCreatorController {
     constructor(private readonly portalCreatorService: PortalCreatorService) {}
 
+    @ApiHeaders([
+        {
+            name: "X-ACCESSTIME-AUTH-MESSAGE",
+            required: true
+        },
+        {
+            name: "X-ACCESSTIME-AUTH-SIGNATURE",
+            required: true
+        }
+    ])
+    @Throttle({ default: { limit: 3, ttl: days(1) } })
     @Post("/update-project-avatar/:chainId/:id")
     @UseInterceptors(FileInterceptor("file"))
     updateProjectAvatar(
@@ -50,7 +65,18 @@ export class PortalCreatorController {
         return this.portalCreatorService.updateProjectAvatar(chainId, id, signer, file);
     }
 
+    @ApiHeaders([
+        {
+            name: "X-ACCESSTIME-AUTH-MESSAGE",
+            required: true
+        },
+        {
+            name: "X-ACCESSTIME-AUTH-SIGNATURE",
+            required: true
+        }
+    ])
     @Post("/update-project-socials/:chainId/:id")
+    @Throttle({ default: { limit: 5, ttl: days(1) } })
     updateProjectSocials(
         @Param("chainId") chainId: number,
         @Param("id") id: number,
@@ -60,6 +86,17 @@ export class PortalCreatorController {
         return this.portalCreatorService.updateProjectSocials(chainId, id, signer, data);
     }
 
+    @ApiHeaders([
+        {
+            name: "X-ACCESSTIME-AUTH-MESSAGE",
+            required: true
+        },
+        {
+            name: "X-ACCESSTIME-AUTH-SIGNATURE",
+            required: true
+        }
+    ])
+    @Throttle({ default: { limit: 5, ttl: days(1) } })
     @Post("/update-project-categories/:chainId/:id")
     updateProjectCategories(
         @Param("chainId") chainId: number,
@@ -70,6 +107,17 @@ export class PortalCreatorController {
         return this.portalCreatorService.updateProjectCategories(chainId, id, signer, data);
     }
 
+    @ApiHeaders([
+        {
+            name: "X-ACCESSTIME-AUTH-MESSAGE",
+            required: true
+        },
+        {
+            name: "X-ACCESSTIME-AUTH-SIGNATURE",
+            required: true
+        }
+    ])
+    @Throttle({ default: { limit: 3, ttl: days(1) } })
     @Post("/update-project-content/:chainId/:id")
     @UseInterceptors(FileInterceptor("file"))
     updateProjectContent(
@@ -89,6 +137,17 @@ export class PortalCreatorController {
         return this.portalCreatorService.updateProjectContent(chainId, id, signer, file);
     }
 
+    @ApiHeaders([
+        {
+            name: "X-ACCESSTIME-AUTH-MESSAGE",
+            required: true
+        },
+        {
+            name: "X-ACCESSTIME-AUTH-SIGNATURE",
+            required: true
+        }
+    ])
+    @Throttle({ default: { limit: 5, ttl: days(1) } })
     @Post("/update-project-packages/:chainId/:id")
     updateProjectPackages(
         @Param("chainId") chainId: number,
@@ -99,6 +158,17 @@ export class PortalCreatorController {
         return this.portalCreatorService.updateProjectPackages(chainId, id, signer, data);
     }
 
+    @ApiHeaders([
+        {
+            name: "X-ACCESSTIME-AUTH-MESSAGE",
+            required: true
+        },
+        {
+            name: "X-ACCESSTIME-AUTH-SIGNATURE",
+            required: true
+        }
+    ])
+    @Throttle({ default: { limit: 7, ttl: days(1) } })
     @Post("/update-project-package-image/:chainId/:id/:packageId")
     @UseInterceptors(FileInterceptor("file"))
     updateProjectPackageImage(
@@ -127,6 +197,17 @@ export class PortalCreatorController {
         );
     }
 
+    @ApiHeaders([
+        {
+            name: "X-ACCESSTIME-AUTH-MESSAGE",
+            required: true
+        },
+        {
+            name: "X-ACCESSTIME-AUTH-SIGNATURE",
+            required: true
+        }
+    ])
+    @Throttle({ default: { limit: 5, ttl: days(1) } })
     @Post("/update-project-package-content/:chainId/:id/:packageId")
     @UseInterceptors(FileInterceptor("file"))
     updateProjectPackageContent(
