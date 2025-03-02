@@ -8,6 +8,7 @@ import { DeploymentModule } from "../deployment/deployment.module";
 import { ProjectModule } from "../project/project.module";
 import { PortalModule } from "../portal/portal.module";
 import { FactoryModule } from "../factory/factory.module";
+import { StatisticModule } from "../statistic/statistic.module";
 
 @Module({
     imports: [
@@ -22,7 +23,8 @@ import { FactoryModule } from "../factory/factory.module";
         forwardRef(() => DeploymentModule),
         forwardRef(() => ProjectModule),
         forwardRef(() => PortalModule),
-        FactoryModule
+        FactoryModule,
+        forwardRef(() => StatisticModule)
     ],
     controllers: [],
     providers: [SubgraphService],

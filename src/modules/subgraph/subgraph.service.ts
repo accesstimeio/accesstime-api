@@ -48,7 +48,9 @@ import {
     ProjectWeeklyVoteResponse as pProjectWeeklyVoteResponse,
     CountProjectsDocument as pCountProjectsDocument,
     CountWeeklyVoteProjectsDocument as pCountWeeklyVoteProjectsDocument,
-    CountWeeklyVoteProjectsResponse as pCountWeeklyVoteProjectsResponse
+    CountWeeklyVoteProjectsResponse as pCountWeeklyVoteProjectsResponse,
+    StatisticsResponse,
+    StatisticsDocument
 } from "./query/ponder";
 
 import { DeploymentService } from "../deployment/deployment.service";
@@ -57,6 +59,7 @@ import { ProjectResponseDto } from "../project/dto";
 import { ProjectService } from "../project/project.service";
 import { PortalService } from "../portal/portal.service";
 import { FactoryService } from "../factory/factory.service";
+import { StatisticService } from "../statistic/statistic.service";
 
 @Injectable()
 export class SubgraphService {
@@ -72,7 +75,9 @@ export class SubgraphService {
         private readonly projectService: ProjectService,
         @Inject(forwardRef(() => PortalService))
         private readonly portalService: PortalService,
-        private readonly factoryService: FactoryService
+        private readonly factoryService: FactoryService,
+        @Inject(forwardRef(() => StatisticService))
+        private readonly statisticService: StatisticService
     ) {
         const subgraphUrls = process.env.SUBGRAPH_URL.split(",");
         const subgraphTypes = process.env.SUBGRAPH_TYPE.split(",");
@@ -726,6 +731,39 @@ export class SubgraphService {
             }
         } catch (_err) {
             throw new Error("[countProjects]: Subgraph query failed!");
+        }
+    }
+
+    async statistics(
+        chainId: number,
+        address: Address,
+        limit: number,
+        type: number,
+        internalType: number,
+        timeGap: string
+    ): Promise<StatisticsResponse[]> {
+        try {
+            switch (this.clientTypes[chainId]) {
+                case "thegraph":
+                    return [];
+                case "ponder":
+                    const presult = await this.getClient(chainId).request(StatisticsDocument, {
+                        address,
+                        limit,
+                        type,
+                        internalType,
+                        timeGap
+                    });
+                    const { statistics } = presult as {
+                        statistics: StatisticsResponse[];
+                    };
+
+                    return statistics ? statistics : [];
+                default:
+                    return [];
+            }
+        } catch (_err) {
+            throw new Error("[statistics]: Subgraph query failed!");
         }
     }
 }

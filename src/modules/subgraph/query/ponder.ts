@@ -220,3 +220,37 @@ export const CountWeeklyVoteProjectsDocument = gql`
         }
     }
 `;
+
+export type StatisticsResponse = {
+    value: string;
+    timeIndex: string;
+};
+
+export const StatisticsDocument = gql`
+    query StatisticDocument(
+        $limit: Int
+        $address: String
+        $internalType: Int
+        $timeGap: BigInt
+        $type: Int
+    ) {
+        statistics(
+            limit: $limit
+            orderBy: "timeIndex"
+            orderDirection: "desc"
+            where: {
+                AND: {
+                    address: $address
+                    timeGap: $timeGap
+                    internalType: $internalType
+                    type: $type
+                }
+            }
+        ) {
+            items {
+                value
+                timeIndex
+            }
+        }
+    }
+`;
