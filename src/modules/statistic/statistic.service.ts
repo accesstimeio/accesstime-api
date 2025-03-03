@@ -156,13 +156,53 @@ export class StatisticService {
         }
 
         if (!data[0]) {
-            return data;
+            return new Array(this.defaultTimeTick).fill("").map((_item, index) => ({
+                timeIndex: (currentIndex - BigInt(index)).toString(),
+                value: "0"
+            }));
         }
 
-        const newOrder: StatisticsResponse[] = [];
-        // const oldFilledOrder: StatisticsResponse[] = [];
+        const newTicks: StatisticsResponse[] = [];
+        const lastTickIndex = BigInt(data[0].timeIndex);
 
-        return newOrder;
+        if (currentIndex != lastTickIndex) {
+            const requiredTickCount =
+                currentIndex - lastTickIndex > BigInt(this.defaultTimeTick)
+                    ? BigInt(this.defaultTimeTick)
+                    : currentIndex - lastTickIndex;
+            for (let i = 0; i < Number(requiredTickCount.toString()); i++) {
+                newTicks.push({
+                    timeIndex: (currentIndex - BigInt(i)).toString(),
+                    value: data[0].value
+                });
+            }
+        }
+
+        for (let i2 = 0; i2 < data.length; i2++) {
+            const timeTick = data[i2];
+            const nextTimeTick = data[i2 + 1];
+            if (newTicks.length >= this.defaultTimeTick) {
+                break;
+            }
+            newTicks.push(timeTick);
+
+            const gapAvaliable =
+                nextTimeTick && Number(timeTick.timeIndex) - Number(nextTimeTick.timeIndex) > 1;
+            if (gapAvaliable) {
+                const gapLength = Number(timeTick.timeIndex) - Number(nextTimeTick.timeIndex);
+                for (let i3 = 1; i3 < gapLength; i3++) {
+                    if (newTicks.length >= this.defaultTimeTick) {
+                        break;
+                    }
+                    newTicks.push({
+                        timeIndex: (Number(timeTick.timeIndex) - i3).toString(),
+                        value: nextTimeTick.value
+                    });
+                }
+            }
+        }
+
+        return newTicks;
     }
 
     async getProjectTotalSoldAccessTime(
@@ -192,7 +232,7 @@ export class StatisticService {
         const filledStatistics = this.fillIndexGap(timeGap, statistics);
 
         await this.cacheService.set(cacheDataKey, filledStatistics, {
-            ttl: Number(process.env.PROJECT_TTL) // todo: create new ttl for statistic data
+            ttl: Number(process.env.STATISTIC_TTL)
         });
 
         return filledStatistics;
@@ -225,7 +265,7 @@ export class StatisticService {
         const filledStatistics = this.fillIndexGap(timeGap, statistics);
 
         await this.cacheService.set(cacheDataKey, filledStatistics, {
-            ttl: Number(process.env.PROJECT_TTL) // todo: create new ttl for statistic data
+            ttl: Number(process.env.STATISTIC_TTL)
         });
 
         return filledStatistics;
@@ -258,7 +298,7 @@ export class StatisticService {
         const filledStatistics = this.fillIndexGap(timeGap, statistics);
 
         await this.cacheService.set(cacheDataKey, filledStatistics, {
-            ttl: Number(process.env.PROJECT_TTL) // todo: create new ttl for statistic data
+            ttl: Number(process.env.STATISTIC_TTL)
         });
 
         return filledStatistics;
@@ -313,7 +353,7 @@ export class StatisticService {
         const filledStatistics = this.fillIndexGap(timeGap, statistics);
 
         await this.cacheService.set(cacheDataKey, filledStatistics, {
-            ttl: Number(process.env.PROJECT_TTL) // todo: create new ttl for statistic data
+            ttl: Number(process.env.STATISTIC_TTL)
         });
 
         return filledStatistics;
