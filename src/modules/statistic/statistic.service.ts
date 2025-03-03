@@ -2,9 +2,10 @@ import { forwardRef, Inject, Injectable } from "@nestjs/common";
 import { CACHE_MANAGER, Cache } from "@nestjs/cache-manager";
 import { Address, encodeAbiParameters, Hash, keccak256, zeroAddress } from "viem";
 
+import { StatisticsResponseDto } from "./dto";
+
 import { SubgraphService } from "../subgraph/subgraph.service";
 import { ProjectService } from "../project/project.service";
-import { StatisticsResponse } from "../subgraph/query/ponder";
 
 const day = 60n * 60n * 24n;
 const week = 7n * day;
@@ -170,8 +171,8 @@ export class StatisticService {
 
     private fillIndexGap(
         timeGap: StatisticTimeGap,
-        data: StatisticsResponse[]
-    ): StatisticsResponse[] {
+        data: StatisticsResponseDto[]
+    ): StatisticsResponseDto[] {
         let currentIndex: bigint = 0n;
         if (timeGap == StatisticTimeGap.WEEK) {
             currentIndex = this.currentWeekIndex();
@@ -191,7 +192,7 @@ export class StatisticService {
             }));
         }
 
-        const newTicks: StatisticsResponse[] = [];
+        const newTicks: StatisticsResponseDto[] = [];
         const lastTickIndex = BigInt(data[0].timeIndex);
 
         if (currentIndex != lastTickIndex) {
@@ -238,13 +239,13 @@ export class StatisticService {
         chainId: number,
         id: number,
         timeGap: StatisticTimeGap = this.defaultTimeGap
-    ): Promise<StatisticsResponse[]> {
+    ): Promise<StatisticsResponseDto[]> {
         const statisticId = this.generateStatisticId(chainId, id, timeGap, {
             type: StatisticType.SOLD_ACCESSTIME,
             internalType: StatisticSoldAccessTimeType.PROJECT
         });
         const cacheDataKey = `statistic_${statisticId}`;
-        const cachedData = await this.cacheService.get<StatisticsResponse[]>(cacheDataKey);
+        const cachedData = await this.cacheService.get<StatisticsResponseDto[]>(cacheDataKey);
 
         if (cachedData) {
             return cachedData;
@@ -271,13 +272,13 @@ export class StatisticService {
         chainId: number,
         id: number,
         timeGap: StatisticTimeGap = this.defaultTimeGap
-    ): Promise<StatisticsResponse[]> {
+    ): Promise<StatisticsResponseDto[]> {
         const statisticId = this.generateStatisticId(chainId, id, timeGap, {
             type: StatisticType.USER,
             internalType: StatisticUserType.PROJECT
         });
         const cacheDataKey = `statistic_${statisticId}`;
-        const cachedData = await this.cacheService.get<StatisticsResponse[]>(cacheDataKey);
+        const cachedData = await this.cacheService.get<StatisticsResponseDto[]>(cacheDataKey);
 
         if (cachedData) {
             return cachedData;
@@ -304,13 +305,13 @@ export class StatisticService {
         chainId: number,
         id: number,
         timeGap: StatisticTimeGap = this.defaultTimeGap
-    ): Promise<StatisticsResponse[]> {
+    ): Promise<StatisticsResponseDto[]> {
         const statisticId = this.generateStatisticId(chainId, id, timeGap, {
             type: StatisticType.VOTE,
             internalType: StatisticVoteType.PROJECT
         });
         const cacheDataKey = `statistic_${statisticId}`;
-        const cachedData = await this.cacheService.get<StatisticsResponse[]>(cacheDataKey);
+        const cachedData = await this.cacheService.get<StatisticsResponseDto[]>(cacheDataKey);
 
         if (cachedData) {
             return cachedData;
@@ -338,7 +339,7 @@ export class StatisticService {
         id: number,
         paymentMethod: Address = this.defaultPaymentMethod,
         timeGap: StatisticTimeGap = this.defaultTimeGap
-    ): Promise<StatisticsResponse[]> {
+    ): Promise<StatisticsResponseDto[]> {
         let currentIndex: bigint = 0n;
         if (timeGap == StatisticTimeGap.WEEK) {
             currentIndex = this.currentWeekIndex();
@@ -357,13 +358,13 @@ export class StatisticService {
             paymentMethod
         });
         const cacheDataKey = `statistic_${statisticId}`;
-        const cachedData = await this.cacheService.get<StatisticsResponse[]>(cacheDataKey);
+        const cachedData = await this.cacheService.get<StatisticsResponseDto[]>(cacheDataKey);
 
         if (cachedData) {
             return cachedData;
         }
         const projectFromChain = await this.projectService.getProjectById(chainId, id);
-        const statistics: StatisticsResponse[] = [];
+        const statistics: StatisticsResponseDto[] = [];
         for (let i = 0; i < this.defaultTimeTick; i++) {
             const statisticSubgraphId = this.generateIncomePonderStatisticId(
                 currentIndex - BigInt(i),
@@ -393,13 +394,13 @@ export class StatisticService {
         chainId: number,
         id: number,
         timeGap: StatisticTimeGap = this.defaultTimeGap
-    ): Promise<StatisticsResponse[]> {
+    ): Promise<StatisticsResponseDto[]> {
         const statisticId = this.generateStatisticId(chainId, id, timeGap, {
             type: StatisticType.NEW_USER,
             internalType: StatisticNewUserType.PROJECT
         });
         const cacheDataKey = `statistic_${statisticId}`;
-        const cachedData = await this.cacheService.get<StatisticsResponse[]>(cacheDataKey);
+        const cachedData = await this.cacheService.get<StatisticsResponseDto[]>(cacheDataKey);
 
         if (cachedData) {
             return cachedData;
