@@ -85,10 +85,10 @@ export class StatisticService {
                     [
                         { type: "uint256" }, // chainId
                         { type: "uint256" }, // id
-                        { type: "uint8" }, // timeGap
+                        { type: "uint256" }, // timeGap
                         { type: "uint8" } // statisticType
                     ],
-                    [BigInt(chainId), BigInt(id), timeGap, details.type]
+                    [BigInt(chainId), BigInt(id), BigInt(timeGap), details.type]
                 )
             );
         } else if (details.type == StatisticType.INCOME) {
@@ -97,7 +97,7 @@ export class StatisticService {
                     [
                         { type: "uint256" }, // chainId
                         { type: "uint256" }, // id
-                        { type: "uint8" }, // timeGap
+                        { type: "uint256" }, // timeGap
                         { type: "uint8" }, // statisticType
                         { type: "uint8" }, // statisticInternalType
                         { type: "address" } // paymentMethod
@@ -105,7 +105,7 @@ export class StatisticService {
                     [
                         BigInt(chainId),
                         BigInt(id),
-                        timeGap,
+                        BigInt(timeGap),
                         details.type,
                         details.internalType,
                         details.paymentMethod.toLowerCase() as Address
@@ -118,11 +118,17 @@ export class StatisticService {
                     [
                         { type: "uint256" }, // chainId
                         { type: "uint256" }, // id
-                        { type: "uint8" }, // timeGap
+                        { type: "uint256" }, // timeGap
                         { type: "uint8" }, // statisticType
                         { type: "uint8" } // statisticInternalType
                     ],
-                    [BigInt(chainId), BigInt(id), timeGap, details.type, details.internalType]
+                    [
+                        BigInt(chainId),
+                        BigInt(id),
+                        BigInt(timeGap),
+                        details.type,
+                        details.internalType
+                    ]
                 )
             );
         }
