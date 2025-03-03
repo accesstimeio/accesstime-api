@@ -176,6 +176,7 @@ export class StatisticService {
     }
 
     private fillIndexGap(
+        type: StatisticType,
         timeGap: StatisticTimeGap,
         data: StatisticsResponseDto[]
     ): StatisticsResponseDto[] {
@@ -206,10 +207,14 @@ export class StatisticService {
                 currentIndex - lastTickIndex > BigInt(this.defaultTimeTick)
                     ? BigInt(this.defaultTimeTick)
                     : currentIndex - lastTickIndex;
+            let fillValue: string = "0";
+            if (type == StatisticType.USER) {
+                fillValue = data[0].value;
+            }
             for (let i = 0; i < Number(requiredTickCount.toString()); i++) {
                 newTicks.push({
                     timeIndex: (currentIndex - BigInt(i)).toString(),
-                    value: data[0].value
+                    value: fillValue
                 });
             }
         }
@@ -226,16 +231,29 @@ export class StatisticService {
                 nextTimeTick && Number(timeTick.timeIndex) - Number(nextTimeTick.timeIndex) > 1;
             if (gapAvaliable) {
                 const gapLength = Number(timeTick.timeIndex) - Number(nextTimeTick.timeIndex);
+                let fillValue: string = "0";
+                if (type == StatisticType.USER) {
+                    fillValue = data[0].value;
+                }
                 for (let i3 = 1; i3 < gapLength; i3++) {
                     if (newTicks.length >= this.defaultTimeTick) {
                         break;
                     }
                     newTicks.push({
                         timeIndex: (Number(timeTick.timeIndex) - i3).toString(),
-                        value: nextTimeTick.value
+                        value: fillValue
                     });
                 }
             }
+        }
+
+        const requiredZeroTickCount = this.defaultTimeTick - newTicks.length;
+        const lastTick = newTicks[newTicks.length - 1];
+        for (let i4 = 0; i4 < requiredZeroTickCount; i4++) {
+            newTicks.push({
+                timeIndex: (Number(lastTick.timeIndex) - (i4 + 1)).toString(),
+                value: "0"
+            });
         }
 
         return newTicks;
@@ -244,8 +262,11 @@ export class StatisticService {
     async getProjectTotalSoldAccessTime(
         chainId: number,
         id: number,
-        timeGap: StatisticTimeGap = this.defaultTimeGap
+        timeGap: StatisticTimeGap
     ): Promise<StatisticsResponseDto[]> {
+        if (!timeGap) {
+            timeGap = this.defaultTimeGap;
+        }
         const statisticId = this.generateStatisticId(chainId, id, timeGap, {
             type: StatisticType.SOLD_ACCESSTIME,
             internalType: StatisticSoldAccessTimeType.PROJECT
@@ -265,7 +286,11 @@ export class StatisticService {
             StatisticSoldAccessTimeType.PROJECT,
             timeGap.toString()
         );
-        const filledStatistics = this.fillIndexGap(timeGap, statistics);
+        const filledStatistics = this.fillIndexGap(
+            StatisticType.SOLD_ACCESSTIME,
+            timeGap,
+            statistics
+        );
 
         await this.cacheService.set(cacheDataKey, filledStatistics, {
             ttl: Number(process.env.STATISTIC_TTL)
@@ -277,8 +302,11 @@ export class StatisticService {
     async getProjectTotalUser(
         chainId: number,
         id: number,
-        timeGap: StatisticTimeGap = this.defaultTimeGap
+        timeGap: StatisticTimeGap
     ): Promise<StatisticsResponseDto[]> {
+        if (!timeGap) {
+            timeGap = this.defaultTimeGap;
+        }
         const statisticId = this.generateStatisticId(chainId, id, timeGap, {
             type: StatisticType.USER,
             internalType: StatisticUserType.PROJECT
@@ -298,7 +326,7 @@ export class StatisticService {
             StatisticUserType.PROJECT,
             timeGap.toString()
         );
-        const filledStatistics = this.fillIndexGap(timeGap, statistics);
+        const filledStatistics = this.fillIndexGap(StatisticType.USER, timeGap, statistics);
 
         await this.cacheService.set(cacheDataKey, filledStatistics, {
             ttl: Number(process.env.STATISTIC_TTL)
@@ -310,8 +338,11 @@ export class StatisticService {
     async getProjectTotalVotes(
         chainId: number,
         id: number,
-        timeGap: StatisticTimeGap = this.defaultTimeGap
+        timeGap: StatisticTimeGap
     ): Promise<StatisticsResponseDto[]> {
+        if (!timeGap) {
+            timeGap = this.defaultTimeGap;
+        }
         const statisticId = this.generateStatisticId(chainId, id, timeGap, {
             type: StatisticType.VOTE,
             internalType: StatisticVoteType.PROJECT
@@ -331,7 +362,7 @@ export class StatisticService {
             StatisticVoteType.PROJECT,
             timeGap.toString()
         );
-        const filledStatistics = this.fillIndexGap(timeGap, statistics);
+        const filledStatistics = this.fillIndexGap(StatisticType.VOTE, timeGap, statistics);
 
         await this.cacheService.set(cacheDataKey, filledStatistics, {
             ttl: Number(process.env.STATISTIC_TTL)
@@ -344,8 +375,11 @@ export class StatisticService {
         chainId: number,
         id: number,
         paymentMethod: Address = this.defaultPaymentMethod,
-        timeGap: StatisticTimeGap = this.defaultTimeGap
+        timeGap: StatisticTimeGap
     ): Promise<StatisticsResponseDto[]> {
+        if (!timeGap) {
+            timeGap = this.defaultTimeGap;
+        }
         let currentIndex: bigint = 0n;
         if (timeGap == StatisticTimeGap.WEEK) {
             currentIndex = this.currentWeekIndex();
@@ -387,7 +421,7 @@ export class StatisticService {
                 statistics.push(statisticData);
             }
         }
-        const filledStatistics = this.fillIndexGap(timeGap, statistics);
+        const filledStatistics = this.fillIndexGap(StatisticType.INCOME, timeGap, statistics);
 
         await this.cacheService.set(cacheDataKey, filledStatistics, {
             ttl: Number(process.env.STATISTIC_TTL)
@@ -399,8 +433,11 @@ export class StatisticService {
     async getProjectNewUser(
         chainId: number,
         id: number,
-        timeGap: StatisticTimeGap = this.defaultTimeGap
+        timeGap: StatisticTimeGap
     ): Promise<StatisticsResponseDto[]> {
+        if (!timeGap) {
+            timeGap = this.defaultTimeGap;
+        }
         const statisticId = this.generateStatisticId(chainId, id, timeGap, {
             type: StatisticType.NEW_USER,
             internalType: StatisticNewUserType.PROJECT
@@ -420,7 +457,7 @@ export class StatisticService {
             StatisticNewUserType.PROJECT,
             timeGap.toString()
         );
-        const filledStatistics = this.fillIndexGap(timeGap, statistics);
+        const filledStatistics = this.fillIndexGap(StatisticType.NEW_USER, timeGap, statistics);
 
         await this.cacheService.set(cacheDataKey, filledStatistics, {
             ttl: Number(process.env.STATISTIC_TTL)
