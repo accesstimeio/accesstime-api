@@ -1,7 +1,7 @@
 import { Inject, Injectable, forwardRef } from "@nestjs/common";
 import { CACHE_MANAGER, Cache } from "@nestjs/cache-manager";
 import { GraphQLClient } from "graphql-request";
-import { Address } from "viem";
+import { Address, Hash } from "viem";
 import { Chain, extractDomain, SUPPORTED_CHAIN } from "@accesstimeio/accesstime-common";
 
 import { SUBGRAPH_TYPE, SUPPORTED_SUBGRAPH_TYPES } from "src/common";
@@ -50,7 +50,8 @@ import {
     CountWeeklyVoteProjectsDocument as pCountWeeklyVoteProjectsDocument,
     CountWeeklyVoteProjectsResponse as pCountWeeklyVoteProjectsResponse,
     StatisticsResponse,
-    StatisticsDocument
+    StatisticsDocument,
+    StatisticDocument
 } from "./query/ponder";
 
 import { DeploymentService } from "../deployment/deployment.service";
@@ -755,12 +756,36 @@ export class SubgraphService {
                         timeGap
                     });
                     const { statistics } = presult as {
-                        statistics: StatisticsResponse[];
+                        statistics: {
+                            items: StatisticsResponse[];
+                        };
                     };
 
-                    return statistics ? statistics : [];
+                    return statistics ? statistics.items : [];
                 default:
                     return [];
+            }
+        } catch (_err) {
+            throw new Error("[statistics]: Subgraph query failed!");
+        }
+    }
+
+    async statisticById(chainId: number, id: Hash): Promise<StatisticsResponse | null> {
+        try {
+            switch (this.clientTypes[chainId]) {
+                case "thegraph":
+                    return null;
+                case "ponder":
+                    const presult = await this.getClient(chainId).request(StatisticDocument, {
+                        id
+                    });
+                    const { statistic } = presult as {
+                        statistic: StatisticsResponse | null;
+                    };
+
+                    return statistic;
+                default:
+                    return null;
             }
         } catch (_err) {
             throw new Error("[statistics]: Subgraph query failed!");

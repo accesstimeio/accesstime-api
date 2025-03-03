@@ -227,7 +227,7 @@ export type StatisticsResponse = {
 };
 
 export const StatisticsDocument = gql`
-    query StatisticDocument(
+    query StatisticsDocument(
         $limit: Int
         $address: String
         $internalType: Int
@@ -251,6 +251,15 @@ export const StatisticsDocument = gql`
                 value
                 timeIndex
             }
+        }
+    }
+`;
+
+export const StatisticDocument = gql`
+    query StatisticDocument($id: String) {
+        statistic(id: $id) {
+            timeIndex
+            value
         }
     }
 `;

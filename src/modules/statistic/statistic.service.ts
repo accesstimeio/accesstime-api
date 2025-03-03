@@ -127,6 +127,35 @@ export class StatisticService {
         }
     }
 
+    private generateIncomePonderStatisticId(
+        timeIndex: bigint,
+        timeGap: StatisticTimeGap,
+        accessTime: Address,
+        internalType: StatisticIncomeType,
+        paymentMethod: Address
+    ) {
+        return keccak256(
+            encodeAbiParameters(
+                [
+                    { type: "uint256" },
+                    { type: "uint256" },
+                    { type: "uint8" },
+                    { type: "uint8" },
+                    { type: "address" },
+                    { type: "address" }
+                ],
+                [
+                    timeIndex,
+                    BigInt(timeGap),
+                    StatisticType.INCOME,
+                    internalType,
+                    accessTime,
+                    paymentMethod
+                ]
+            )
+        );
+    }
+
     private currentTimestamp() {
         return BigInt(Date.now()) / 1000n;
     }
@@ -209,13 +238,13 @@ export class StatisticService {
         chainId: number,
         id: number,
         timeGap: StatisticTimeGap = this.defaultTimeGap
-    ) {
+    ): Promise<StatisticsResponse[]> {
         const statisticId = this.generateStatisticId(chainId, id, timeGap, {
             type: StatisticType.SOLD_ACCESSTIME,
             internalType: StatisticSoldAccessTimeType.PROJECT
         });
         const cacheDataKey = `statistic_${statisticId}`;
-        const cachedData = await this.cacheService.get(cacheDataKey);
+        const cachedData = await this.cacheService.get<StatisticsResponse[]>(cacheDataKey);
 
         if (cachedData) {
             return cachedData;
@@ -242,13 +271,13 @@ export class StatisticService {
         chainId: number,
         id: number,
         timeGap: StatisticTimeGap = this.defaultTimeGap
-    ) {
+    ): Promise<StatisticsResponse[]> {
         const statisticId = this.generateStatisticId(chainId, id, timeGap, {
             type: StatisticType.USER,
             internalType: StatisticUserType.PROJECT
         });
         const cacheDataKey = `statistic_${statisticId}`;
-        const cachedData = await this.cacheService.get(cacheDataKey);
+        const cachedData = await this.cacheService.get<StatisticsResponse[]>(cacheDataKey);
 
         if (cachedData) {
             return cachedData;
@@ -275,13 +304,13 @@ export class StatisticService {
         chainId: number,
         id: number,
         timeGap: StatisticTimeGap = this.defaultTimeGap
-    ) {
+    ): Promise<StatisticsResponse[]> {
         const statisticId = this.generateStatisticId(chainId, id, timeGap, {
             type: StatisticType.VOTE,
             internalType: StatisticVoteType.PROJECT
         });
         const cacheDataKey = `statistic_${statisticId}`;
-        const cachedData = await this.cacheService.get(cacheDataKey);
+        const cachedData = await this.cacheService.get<StatisticsResponse[]>(cacheDataKey);
 
         if (cachedData) {
             return cachedData;
@@ -309,34 +338,68 @@ export class StatisticService {
         id: number,
         paymentMethod: Address = this.defaultPaymentMethod,
         timeGap: StatisticTimeGap = this.defaultTimeGap
-    ) {
+    ): Promise<StatisticsResponse[]> {
+        let currentIndex: bigint = 0n;
+        if (timeGap == StatisticTimeGap.WEEK) {
+            currentIndex = this.currentWeekIndex();
+        }
+        if (timeGap == StatisticTimeGap.MONTH) {
+            currentIndex = this.currentMonthIndex();
+        }
+
+        if (currentIndex == 0n) {
+            return [];
+        }
+
         const statisticId = this.generateStatisticId(chainId, id, timeGap, {
             type: StatisticType.INCOME,
             internalType: StatisticIncomeType.PROJECT,
             paymentMethod
         });
         const cacheDataKey = `statistic_${statisticId}`;
-        const cachedData = await this.cacheService.get(cacheDataKey);
+        const cachedData = await this.cacheService.get<StatisticsResponse[]>(cacheDataKey);
 
         if (cachedData) {
             return cachedData;
         }
-        // const projectFromChain = await this.projectService.getProjectById(chainId, id);
+        const projectFromChain = await this.projectService.getProjectById(chainId, id);
+        const statistics: StatisticsResponse[] = [];
+        for (let i = 0; i < this.defaultTimeTick; i++) {
+            const statisticSubgraphId = this.generateIncomePonderStatisticId(
+                currentIndex - BigInt(i),
+                timeGap,
+                projectFromChain.id,
+                StatisticIncomeType.PROJECT,
+                paymentMethod.toLowerCase() as Address
+            );
+            const statisticData = await this.subgraphService.statisticById(
+                chainId,
+                statisticSubgraphId
+            );
+            if (statisticData) {
+                statistics.push(statisticData);
+            }
+        }
+        const filledStatistics = this.fillIndexGap(timeGap, statistics);
 
-        return [cacheDataKey];
+        await this.cacheService.set(cacheDataKey, filledStatistics, {
+            ttl: Number(process.env.STATISTIC_TTL)
+        });
+
+        return filledStatistics;
     }
 
     async getProjectNewUser(
         chainId: number,
         id: number,
         timeGap: StatisticTimeGap = this.defaultTimeGap
-    ) {
+    ): Promise<StatisticsResponse[]> {
         const statisticId = this.generateStatisticId(chainId, id, timeGap, {
             type: StatisticType.NEW_USER,
             internalType: StatisticNewUserType.PROJECT
         });
         const cacheDataKey = `statistic_${statisticId}`;
-        const cachedData = await this.cacheService.get(cacheDataKey);
+        const cachedData = await this.cacheService.get<StatisticsResponse[]>(cacheDataKey);
 
         if (cachedData) {
             return cachedData;
