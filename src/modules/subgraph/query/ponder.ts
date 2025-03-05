@@ -256,7 +256,7 @@ export const StatisticsDocument = gql`
 `;
 
 export const StatisticDocument = gql`
-    query StatisticDocument($id: String) {
+    query StatisticDocument($id: String!) {
         statistic(id: $id) {
             timeIndex
             value

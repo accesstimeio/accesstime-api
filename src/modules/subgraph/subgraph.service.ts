@@ -788,7 +788,8 @@ export class SubgraphService {
                     return null;
             }
         } catch (_err) {
-            throw new Error("[statistics]: Subgraph query failed!");
+            console.log(_err);
+            throw new Error("[statisticById]: Subgraph query failed!");
         }
     }
 }

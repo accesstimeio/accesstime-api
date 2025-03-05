@@ -260,7 +260,7 @@ export class StatisticService {
             ttl: Number(process.env.STATISTIC_TTL)
         });
 
-        return filledStatistics.reverse();
+        return filledStatistics;
     }
 
     async getProjectTotalUser(
@@ -296,7 +296,7 @@ export class StatisticService {
             ttl: Number(process.env.STATISTIC_TTL)
         });
 
-        return filledStatistics.reverse();
+        return filledStatistics;
     }
 
     async getProjectTotalVotes(
@@ -332,7 +332,7 @@ export class StatisticService {
             ttl: Number(process.env.STATISTIC_TTL)
         });
 
-        return filledStatistics.reverse();
+        return filledStatistics;
     }
 
     async getProjectTotalIncome(
@@ -391,7 +391,7 @@ export class StatisticService {
             ttl: Number(process.env.STATISTIC_TTL)
         });
 
-        return filledStatistics.reverse();
+        return filledStatistics;
     }
 
     async getProjectNewUser(
@@ -427,7 +427,7 @@ export class StatisticService {
             ttl: Number(process.env.STATISTIC_TTL)
         });
 
-        return filledStatistics.reverse();
+        return filledStatistics;
     }
 
     async removeProjectStatistics(chainId: number, id: number) {
