@@ -1,56 +1,20 @@
 import { forwardRef, Inject, Injectable } from "@nestjs/common";
 import { CACHE_MANAGER, Cache } from "@nestjs/cache-manager";
 import { Address, encodeAbiParameters, Hash, keccak256, zeroAddress } from "viem";
+import {
+    StatisticIncomeType,
+    StatisticNewUserType,
+    StatisticSoldAccessTimeType,
+    StatisticTimeGap,
+    StatisticType,
+    StatisticUserType,
+    StatisticVoteType
+} from "@accesstimeio/accesstime-common";
 
 import { StatisticsResponseDto } from "./dto";
 
 import { SubgraphService } from "../subgraph/subgraph.service";
 import { ProjectService } from "../project/project.service";
-
-const day = 60n * 60n * 24n;
-const week = 7n * day;
-const month = 30n * day;
-
-export enum StatisticTimeGap {
-    WEEK = Number(week.toString()),
-    MONTH = Number(month.toString())
-}
-
-enum StatisticType {
-    DEPLOY_COUNT = 0,
-    SOLD_ACCESSTIME = 1,
-    USER = 2,
-    NEW_USER = 3,
-    VOTE = 4,
-    INCOME = 5
-}
-
-enum StatisticSoldAccessTimeType {
-    COMPANY = 10,
-    PROJECT = 11
-}
-
-enum StatisticUserType {
-    COMPANY = 20,
-    PROJECT = 21
-}
-
-enum StatisticNewUserType {
-    COMPANY = 30,
-    PROJECT = 31,
-    CUMULATIVE_PROJECTS = 32
-}
-
-enum StatisticVoteType {
-    COMPANY = 40,
-    PROJECT = 51
-}
-
-enum StatisticIncomeType {
-    COMPANY = 50,
-    PROJECT = 51,
-    CUMULATIVE_PROJECTS = 52
-}
 
 type GenerateCacheIdDetails =
     | { type: StatisticType.DEPLOY_COUNT }
@@ -168,11 +132,11 @@ export class StatisticService {
     }
 
     private currentWeekIndex() {
-        return this.currentTimestamp() / week;
+        return this.currentTimestamp() / BigInt(StatisticTimeGap.WEEK);
     }
 
     private currentMonthIndex() {
-        return this.currentTimestamp() / month;
+        return this.currentTimestamp() / BigInt(StatisticTimeGap.MONTH);
     }
 
     private fillIndexGap(
