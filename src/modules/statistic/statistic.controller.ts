@@ -1,8 +1,9 @@
 import { Controller, Get, Param, Query, UsePipes, ValidationPipe } from "@nestjs/common";
 import { Address } from "viem";
 import { ApiQuery, ApiResponse } from "@nestjs/swagger";
+import { StatisticTimeGap } from "@accesstimeio/accesstime-common";
 
-import { StatisticService, StatisticTimeGap } from "./statistic.service";
+import { StatisticService } from "./statistic.service";
 import { StatisticsResponseDto } from "./dto";
 
 @UsePipes(new ValidationPipe({ transform: true }))
