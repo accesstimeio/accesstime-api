@@ -220,3 +220,46 @@ export const CountWeeklyVoteProjectsDocument = gql`
         }
     }
 `;
+
+export type StatisticsResponse = {
+    value: string;
+    timeIndex: string;
+};
+
+export const StatisticsDocument = gql`
+    query StatisticsDocument(
+        $limit: Int
+        $address: String
+        $internalType: Int
+        $timeGap: BigInt
+        $type: Int
+    ) {
+        statistics(
+            limit: $limit
+            orderBy: "timeIndex"
+            orderDirection: "desc"
+            where: {
+                AND: {
+                    address: $address
+                    timeGap: $timeGap
+                    internalType: $internalType
+                    type: $type
+                }
+            }
+        ) {
+            items {
+                value
+                timeIndex
+            }
+        }
+    }
+`;
+
+export const StatisticDocument = gql`
+    query StatisticDocument($id: String!) {
+        statistic(id: $id) {
+            timeIndex
+            value
+        }
+    }
+`;

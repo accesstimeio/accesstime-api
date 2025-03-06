@@ -4,6 +4,8 @@ import * as Joi from "joi";
 import { MongooseModule } from "@nestjs/mongoose";
 import { RouterModule } from "@nestjs/core";
 import { ScheduleModule } from "@nestjs/schedule";
+import { minutes, ThrottlerModule } from "@nestjs/throttler";
+import { ThrottlerStorageRedisService } from "nestjs-throttler-storage-redis";
 
 import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
@@ -16,8 +18,7 @@ import { PortalCreatorModule } from "./modules/portal-creator/portal-creator.mod
 import { NestMinioModule } from "nestjs-minio";
 import { PortalLinkModule } from "./modules/portal-link/portal-link.module";
 import { FactoryModule } from "./modules/factory/factory.module";
-import { minutes, ThrottlerModule } from "@nestjs/throttler";
-import { ThrottlerStorageRedisService } from "nestjs-throttler-storage-redis";
+import { StatisticModule } from "./modules/statistic/statistic.module";
 
 const NODE_ENV = process.env.NODE_ENV;
 
@@ -33,6 +34,7 @@ const NODE_ENV = process.env.NODE_ENV;
                 PAGE_ITEM_LIMIT: Joi.number().default(16),
                 PROJECT_TTL: Joi.number().default(172800), // 2 day as seconds
                 RATES_TTL: Joi.number().default(86400), // 1 day as seconds
+                STATISTIC_TTL: Joi.number().default(3600), // 1 hour as seconds
                 REDIS_HOST: Joi.string().required(),
                 REDIS_PORT: Joi.number().required(),
                 REDIS_PASSWORD: Joi.string().required(),
@@ -62,6 +64,7 @@ const NODE_ENV = process.env.NODE_ENV;
         PortalModule,
         PortalCreatorModule,
         PortalLinkModule,
+        StatisticModule,
         RouterModule.register([
             {
                 path: "portal",
@@ -87,6 +90,10 @@ const NODE_ENV = process.env.NODE_ENV;
                     {
                         path: "project",
                         module: ProjectModule
+                    },
+                    {
+                        path: "statistic",
+                        module: StatisticModule
                     }
                 ]
             }

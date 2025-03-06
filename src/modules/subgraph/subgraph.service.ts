@@ -1,7 +1,7 @@
 import { Inject, Injectable, forwardRef } from "@nestjs/common";
 import { CACHE_MANAGER, Cache } from "@nestjs/cache-manager";
 import { GraphQLClient } from "graphql-request";
-import { Address } from "viem";
+import { Address, Hash } from "viem";
 import { Chain, extractDomain, SUPPORTED_CHAIN } from "@accesstimeio/accesstime-common";
 
 import { SUBGRAPH_TYPE, SUPPORTED_SUBGRAPH_TYPES } from "src/common";
@@ -48,7 +48,10 @@ import {
     ProjectWeeklyVoteResponse as pProjectWeeklyVoteResponse,
     CountProjectsDocument as pCountProjectsDocument,
     CountWeeklyVoteProjectsDocument as pCountWeeklyVoteProjectsDocument,
-    CountWeeklyVoteProjectsResponse as pCountWeeklyVoteProjectsResponse
+    CountWeeklyVoteProjectsResponse as pCountWeeklyVoteProjectsResponse,
+    StatisticsResponse,
+    StatisticsDocument,
+    StatisticDocument
 } from "./query/ponder";
 
 import { DeploymentService } from "../deployment/deployment.service";
@@ -57,6 +60,7 @@ import { ProjectResponseDto } from "../project/dto";
 import { ProjectService } from "../project/project.service";
 import { PortalService } from "../portal/portal.service";
 import { FactoryService } from "../factory/factory.service";
+import { StatisticService } from "../statistic/statistic.service";
 
 @Injectable()
 export class SubgraphService {
@@ -72,7 +76,9 @@ export class SubgraphService {
         private readonly projectService: ProjectService,
         @Inject(forwardRef(() => PortalService))
         private readonly portalService: PortalService,
-        private readonly factoryService: FactoryService
+        private readonly factoryService: FactoryService,
+        @Inject(forwardRef(() => StatisticService))
+        private readonly statisticService: StatisticService
     ) {
         const subgraphUrls = process.env.SUBGRAPH_URL.split(",");
         const subgraphTypes = process.env.SUBGRAPH_TYPE.split(",");
@@ -726,6 +732,64 @@ export class SubgraphService {
             }
         } catch (_err) {
             throw new Error("[countProjects]: Subgraph query failed!");
+        }
+    }
+
+    async statistics(
+        chainId: number,
+        address: Address,
+        limit: number,
+        type: number,
+        internalType: number,
+        timeGap: string
+    ): Promise<StatisticsResponse[]> {
+        try {
+            switch (this.clientTypes[chainId]) {
+                case "thegraph":
+                    return [];
+                case "ponder":
+                    const presult = await this.getClient(chainId).request(StatisticsDocument, {
+                        address,
+                        limit,
+                        type,
+                        internalType,
+                        timeGap
+                    });
+                    const { statistics } = presult as {
+                        statistics: {
+                            items: StatisticsResponse[];
+                        };
+                    };
+
+                    return statistics ? statistics.items : [];
+                default:
+                    return [];
+            }
+        } catch (_err) {
+            throw new Error("[statistics]: Subgraph query failed!");
+        }
+    }
+
+    async statisticById(chainId: number, id: Hash): Promise<StatisticsResponse | null> {
+        try {
+            switch (this.clientTypes[chainId]) {
+                case "thegraph":
+                    return null;
+                case "ponder":
+                    const presult = await this.getClient(chainId).request(StatisticDocument, {
+                        id
+                    });
+                    const { statistic } = presult as {
+                        statistic: StatisticsResponse | null;
+                    };
+
+                    return statistic;
+                default:
+                    return null;
+            }
+        } catch (_err) {
+            console.log(_err);
+            throw new Error("[statisticById]: Subgraph query failed!");
         }
     }
 }
