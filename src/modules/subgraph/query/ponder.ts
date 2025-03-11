@@ -263,3 +263,30 @@ export const StatisticDocument = gql`
         }
     }
 `;
+
+export type AccessTimeUsersResponse = {
+    address: Address;
+    totalPurchasedTime: string;
+    endTime: string;
+};
+
+export const AccessTimeUsersDocument = gql`
+    query AccessTimeUsersDocument($limit: Int!, $after: String, $accessTimeAddress: String) {
+        accessTimeUsers(
+            limit: $limit
+            after: $after
+            where: { accessTimeAddress: $accessTimeAddress }
+        ) {
+            items {
+                address
+                totalPurchasedTime
+                endTime
+                usedPaymentMethods
+            }
+            pageInfo {
+                endCursor
+            }
+            totalCount
+        }
+    }
+`;

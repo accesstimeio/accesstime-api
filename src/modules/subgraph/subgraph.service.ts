@@ -51,7 +51,9 @@ import {
     CountWeeklyVoteProjectsResponse as pCountWeeklyVoteProjectsResponse,
     StatisticsResponse,
     StatisticsDocument,
-    StatisticDocument
+    StatisticDocument,
+    AccessTimeUsersDocument,
+    AccessTimeUsersResponse
 } from "./query/ponder";
 
 import { DeploymentService } from "../deployment/deployment.service";
@@ -790,6 +792,52 @@ export class SubgraphService {
         } catch (_err) {
             console.log(_err);
             throw new Error("[statisticById]: Subgraph query failed!");
+        }
+    }
+
+    async accessTimeUsers(
+        chainId: number,
+        address: Address,
+        ponderPageCursor?: string | null
+    ): Promise<{
+        items: AccessTimeUsersResponse[];
+        totalCount: number;
+        pageCursor: string | null;
+    }> {
+        try {
+            const limit = Number(process.env.PAGE_ITEM_LIMIT);
+            ponderPageCursor ??= null;
+
+            switch (this.clientTypes[chainId]) {
+                case "thegraph":
+                    return { items: [], totalCount: 0, pageCursor: null };
+                case "ponder":
+                    const presult = await this.getClient(chainId).request(AccessTimeUsersDocument, {
+                        limit,
+                        after: ponderPageCursor,
+                        accessTimeAddress: address
+                    });
+                    const { accessTimeUsers } = presult as {
+                        accessTimeUsers: {
+                            items: AccessTimeUsersResponse[];
+                            totalCount: number;
+                            pageInfo: { endCursor: string | null };
+                        };
+                    };
+
+                    return accessTimeUsers
+                        ? {
+                              items: accessTimeUsers.items,
+                              totalCount: accessTimeUsers.totalCount,
+                              pageCursor: accessTimeUsers.pageInfo.endCursor
+                          }
+                        : { items: [], totalCount: 0, pageCursor: null };
+                default:
+                    return { items: [], totalCount: 0, pageCursor: null };
+            }
+        } catch (_err) {
+            console.log(_err);
+            throw new Error("[accessTimeUsers]: Subgraph query failed!");
         }
     }
 }
