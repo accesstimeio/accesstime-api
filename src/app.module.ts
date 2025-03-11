@@ -19,6 +19,7 @@ import { NestMinioModule } from "nestjs-minio";
 import { PortalLinkModule } from "./modules/portal-link/portal-link.module";
 import { FactoryModule } from "./modules/factory/factory.module";
 import { StatisticModule } from "./modules/statistic/statistic.module";
+import { UserModule } from "./modules/user/user.module";
 
 const NODE_ENV = process.env.NODE_ENV;
 
@@ -94,6 +95,10 @@ const NODE_ENV = process.env.NODE_ENV;
                     {
                         path: "statistic",
                         module: StatisticModule
+                    },
+                    {
+                        path: "user",
+                        module: UserModule
                     }
                 ]
             }
