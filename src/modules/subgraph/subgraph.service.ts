@@ -404,10 +404,10 @@ export class SubgraphService {
                 case "ponder":
                     const presult = await this.getClient(chainId).request(pCountProjectsDocument, {
                         // eslint-disable-next-line prettier/prettier
-                        filter: { "AND": paymentMethods.map((paymentMethod) => (
-                            {
+                        filter: {
+                            AND: paymentMethods.map((paymentMethod) => ({
                                 // eslint-disable-next-line prettier/prettier
-                                "paymentMethods_has": paymentMethod.toLowerCase()
+                                paymentMethods_has: paymentMethod.toLowerCase()
                             }))
                         }
                     });
@@ -453,10 +453,10 @@ export class SubgraphService {
                         limit,
                         after: ponderPageCursor,
                         // eslint-disable-next-line prettier/prettier
-                        filter: { "AND": paymentMethods.map((paymentMethod) => (
-                            {
+                        filter: {
+                            AND: paymentMethods.map((paymentMethod) => ({
                                 // eslint-disable-next-line prettier/prettier
-                                "paymentMethods_has": paymentMethod.toLowerCase()
+                                paymentMethods_has: paymentMethod.toLowerCase()
                             }))
                         }
                     });
@@ -519,10 +519,10 @@ export class SubgraphService {
                             limit,
                             after: ponderPageCursor,
                             // eslint-disable-next-line prettier/prettier
-                            filter: { "AND": paymentMethods.map((paymentMethod) => (
-                                {
+                            filter: {
+                                AND: paymentMethods.map((paymentMethod) => ({
                                     // eslint-disable-next-line prettier/prettier
-                                    "paymentMethods_has": paymentMethod.toLowerCase()
+                                    paymentMethods_has: paymentMethod.toLowerCase()
                                 }))
                             }
                         }
@@ -589,10 +589,10 @@ export class SubgraphService {
                 case "ponder":
                     const filterContent: any[] = paymentMethods.map((paymentMethod) => ({
                         // eslint-disable-next-line prettier/prettier
-                        "accessTimePaymentMethods_has": paymentMethod.toLowerCase()
+                        accessTimePaymentMethods_has: paymentMethod.toLowerCase()
                     }));
                     // eslint-disable-next-line prettier/prettier
-                    filterContent.push({ "epochWeek": epochWeek.toString() });
+                    filterContent.push({ epochWeek: epochWeek.toString() });
 
                     const presult = await this.getClient(chainId).request(
                         pWeeklyPopularProjectsDocument,
@@ -711,10 +711,10 @@ export class SubgraphService {
                 case "ponder":
                     const filterContent: any[] = paymentMethods.map((paymentMethod) => ({
                         // eslint-disable-next-line prettier/prettier
-                        "accessTimePaymentMethods_has": paymentMethod.toLowerCase()
+                        accessTimePaymentMethods_has: paymentMethod.toLowerCase()
                     }));
                     // eslint-disable-next-line prettier/prettier
-                    filterContent.push({ "epochWeek": epochWeek.toString() });
+                    filterContent.push({ epochWeek: epochWeek.toString() });
 
                     const presult = await this.getClient(chainId).request(
                         pCountWeeklyVoteProjectsDocument,
@@ -798,6 +798,7 @@ export class SubgraphService {
     async accessTimeUsers(
         chainId: number,
         address: Address,
+        orderBy?: string,
         ponderPageCursor?: string | null
     ): Promise<{
         items: AccessTimeUsersResponse[];
@@ -807,6 +808,7 @@ export class SubgraphService {
         try {
             const limit = Number(process.env.PAGE_ITEM_LIMIT);
             ponderPageCursor ??= null;
+            orderBy ??= "accessTimeAddress";
 
             switch (this.clientTypes[chainId]) {
                 case "thegraph":
@@ -815,7 +817,8 @@ export class SubgraphService {
                     const presult = await this.getClient(chainId).request(AccessTimeUsersDocument, {
                         limit,
                         after: ponderPageCursor,
-                        accessTimeAddress: address
+                        accessTimeAddress: address,
+                        orderBy
                     });
                     const { accessTimeUsers } = presult as {
                         accessTimeUsers: {

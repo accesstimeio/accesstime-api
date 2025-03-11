@@ -271,11 +271,18 @@ export type AccessTimeUsersResponse = {
 };
 
 export const AccessTimeUsersDocument = gql`
-    query AccessTimeUsersDocument($limit: Int!, $after: String, $accessTimeAddress: String) {
+    query AccessTimeUsersDocument(
+        $limit: Int!
+        $after: String
+        $accessTimeAddress: String
+        $orderBy: String
+    ) {
         accessTimeUsers(
             limit: $limit
             after: $after
             where: { accessTimeAddress: $accessTimeAddress }
+            orderBy: $orderBy
+            orderDirection: "desc"
         ) {
             items {
                 address

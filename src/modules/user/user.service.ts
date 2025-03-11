@@ -1,4 +1,4 @@
-import { forwardRef, Inject, Injectable } from "@nestjs/common";
+import { forwardRef, HttpException, HttpStatus, Inject, Injectable } from "@nestjs/common";
 import { CACHE_MANAGER, Cache } from "@nestjs/cache-manager";
 import { hashMessage, keccak256, zeroHash } from "viem";
 
@@ -19,10 +19,21 @@ export class UserService {
     async getProjectUsers(
         chainId: number,
         id: number,
+        orderBy?: string,
         pageCursor?: string
     ): Promise<ProjectUsersDto> {
+        if (orderBy && !["totalPurchasedTime", "endTime", "accessTimeAddress"].includes(orderBy)) {
+            throw new HttpException(
+                {
+                    errors: { message: "Invalid orderBy type." }
+                },
+                HttpStatus.EXPECTATION_FAILED
+            );
+        }
+        orderBy ??= "accessTimeAddress";
+
         const pageCursor_ = pageCursor ? hashMessage(pageCursor) : zeroHash;
-        const cacheDataKey = `${chainId}-${id}-project-user-${keccak256(pageCursor_)}`;
+        const cacheDataKey = `${chainId}-${id}-project-user-orderBy_${orderBy}-${keccak256(pageCursor_)}`;
         const cachedData = await this.cacheService.get<ProjectUsersDto>(cacheDataKey);
 
         if (cachedData) {
@@ -33,6 +44,7 @@ export class UserService {
         const projectUsers = await this.subgraphService.accessTimeUsers(
             chainId,
             projectFromChain.id,
+            orderBy,
             pageCursor
         );
 

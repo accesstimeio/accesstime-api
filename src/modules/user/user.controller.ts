@@ -12,6 +12,11 @@ export class UserController {
     constructor(private readonly userService: UserService) {}
 
     @ApiQuery({
+        name: "orderBy",
+        type: String,
+        required: false
+    })
+    @ApiQuery({
         name: "pageCursor",
         type: String,
         required: false
@@ -23,8 +28,9 @@ export class UserController {
     getProjectUsers(
         @Param("chainId") chainId: number,
         @Param("id") id: number,
+        @Query("orderBy") orderBy: string,
         @Query("pageCursor") pageCursor: string
     ) {
-        return this.userService.getProjectUsers(chainId, id, pageCursor);
+        return this.userService.getProjectUsers(chainId, id, orderBy, pageCursor);
     }
 }
