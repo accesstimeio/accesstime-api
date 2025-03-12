@@ -268,6 +268,7 @@ export type AccessTimeUsersResponse = {
     address: Address;
     totalPurchasedTime: string;
     endTime: string;
+    usedPaymentMethods: Address[];
 };
 
 export const AccessTimeUsersDocument = gql`

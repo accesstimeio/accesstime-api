@@ -32,6 +32,7 @@ export class UserService {
         }
         orderBy ??= "accessTimeAddress";
 
+        const limit = Number(process.env.PAGE_ITEM_LIMIT);
         const pageCursor_ = pageCursor ? hashMessage(pageCursor) : zeroHash;
         const cacheDataKey = `${chainId}-${id}-project-user-orderBy_${orderBy}-${keccak256(pageCursor_)}`;
         const cachedData = await this.cacheService.get<ProjectUsersDto>(cacheDataKey);
@@ -44,12 +45,18 @@ export class UserService {
         const projectUsers = await this.subgraphService.accessTimeUsers(
             chainId,
             projectFromChain.id,
+            limit,
             orderBy,
             pageCursor
         );
 
+        const returnData = {
+            ...projectUsers,
+            maxPage: Math.floor(projectUsers.totalCount / limit)
+        };
+
         if (projectUsers.items.length > 0) {
-            await this.cacheService.set(cacheDataKey, projectUsers, {
+            await this.cacheService.set(cacheDataKey, returnData, {
                 ttl: Number(process.env.STATISTIC_TTL)
             });
 
@@ -68,7 +75,7 @@ export class UserService {
             });
         }
 
-        return projectUsers;
+        return returnData;
     }
 
     async removeProjectUsers(chainId: number, id: number) {

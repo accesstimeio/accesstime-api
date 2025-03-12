@@ -14,6 +14,13 @@ export class ProjectUserDto {
     @Expose()
     @ApiProperty()
     endTime: string;
+
+    @Expose()
+    @ApiProperty({
+        type: String,
+        isArray: true
+    })
+    usedPaymentMethods: Address[];
 }
 
 export class ProjectUsersDto {
@@ -31,4 +38,8 @@ export class ProjectUsersDto {
     @Expose()
     @ApiProperty()
     pageCursor: string | null;
+
+    @Expose()
+    @ApiProperty()
+    maxPage: number;
 }

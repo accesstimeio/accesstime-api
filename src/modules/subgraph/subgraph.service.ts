@@ -798,6 +798,7 @@ export class SubgraphService {
     async accessTimeUsers(
         chainId: number,
         address: Address,
+        limit: number,
         orderBy?: string,
         ponderPageCursor?: string | null
     ): Promise<{
@@ -806,7 +807,6 @@ export class SubgraphService {
         pageCursor: string | null;
     }> {
         try {
-            const limit = Number(process.env.PAGE_ITEM_LIMIT);
             ponderPageCursor ??= null;
             orderBy ??= "accessTimeAddress";
 
