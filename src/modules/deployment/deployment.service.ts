@@ -86,6 +86,7 @@ export class DeploymentService {
                         page: 0,
                         maxPage: 0,
                         deployments: [],
+                        totalCount: 0,
                         pageCursor: null
                     };
                 }
@@ -108,6 +109,7 @@ export class DeploymentService {
                 page: requestedPage,
                 maxPage: Math.floor(deploymentCount / limit),
                 deployments: listDeployments.deployments,
+                totalCount: deploymentCount,
                 pageCursor: listDeployments.pageCursor
             };
 
