@@ -12,7 +12,7 @@ export class CronService {
         this.subgraphService.sync();
     }
 
-    @Cron(CronExpression.EVERY_10_MINUTES)
+    @Cron(CronExpression.EVERY_5_MINUTES)
     subgraphSyncStatistics() {
         this.subgraphService.syncStatistics();
     }

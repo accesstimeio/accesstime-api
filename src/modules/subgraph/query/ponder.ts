@@ -347,8 +347,6 @@ export const SyncStatisticsDocument = gql`
         statistics(
             limit: $limit
             after: $after
-            orderBy: "timestamp"
-            orderDirection: "desc"
             where: { timeGap: "604800", timeIndex: $timeIndex }
         ) {
             items {

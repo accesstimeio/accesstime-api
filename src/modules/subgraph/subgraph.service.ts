@@ -267,7 +267,9 @@ export class SubgraphService {
                     const factory = this.factoryService.client[chainId];
 
                     let pageCursor: string | undefined = undefined;
-                    let endLoop: boolean = false;
+                    let endLoop: boolean = true;
+
+                    const clearQueue: number[] = [];
 
                     while (endLoop) {
                         const statistics = await this.syncStatisticsCall(chainId, pageCursor);
@@ -279,21 +281,13 @@ export class SubgraphService {
                             ]);
                             const projectId = Number(id.toString());
                             const statisticCacheKey = `statistic-${statistic.id}`;
-                            console.log(chainId, projectId, statisticCacheKey, "check");
                             const lastSaved =
                                 await this.cacheService.get<string>(statisticCacheKey);
 
                             if (lastSaved && lastSaved != statistic.value) {
-                                console.log(chainId, projectId, statisticCacheKey, "clear");
-                                await this.statisticService.removeProjectStatistics(
-                                    chainId,
-                                    projectId
-                                );
-                                await this.userService.removeProjectUsers(chainId, projectId);
-                                await this.accountingService.removeProjectIncomes(
-                                    chainId,
-                                    projectId
-                                );
+                                if (!clearQueue.includes(projectId)) {
+                                    clearQueue.push(projectId);
+                                }
                             }
 
                             await this.cacheService.set(statisticCacheKey, statistic.value, {
@@ -302,7 +296,15 @@ export class SubgraphService {
                         }
 
                         pageCursor = statistics.pageCursor;
-                        endLoop = !statistics.hasNextPage;
+                        endLoop = statistics.hasNextPage;
+                    }
+
+                    for (let i3 = 0; i3 < clearQueue.length; i3++) {
+                        const projectId = clearQueue[i3];
+
+                        await this.statisticService.removeProjectStatistics(chainId, projectId);
+                        await this.userService.removeProjectUsers(chainId, projectId);
+                        await this.accountingService.removeProjectIncomes(chainId, projectId);
                     }
                 }
                 this.syncStatisticsBusy = false;
