@@ -280,7 +280,7 @@ export class SubgraphService {
                                 statistic.address
                             ]);
                             const projectId = Number(id.toString());
-                            const statisticCacheKey = `statistic-${statistic.id}`;
+                            const statisticCacheKey = `statistic-sync-${statistic.id}`;
                             const lastSaved =
                                 await this.cacheService.get<string>(statisticCacheKey);
 
