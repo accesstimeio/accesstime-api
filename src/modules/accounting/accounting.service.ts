@@ -23,7 +23,7 @@ export class AccountingService {
     ): Promise<ProjectIncomesDto> {
         const limit = Number(process.env.PAGE_ITEM_LIMIT);
         const pageCursor_ = pageCursor ? hashMessage(pageCursor) : zeroHash;
-        const cacheDataKey = `${chainId}-${id}-project-accounting-${keccak256(pageCursor_)}`;
+        const cacheDataKey = `${chainId}-${id}-project-income-${keccak256(pageCursor_)}`;
         const cachedData = await this.cacheService.get<ProjectIncomesDto>(cacheDataKey);
 
         if (cachedData) {
@@ -49,7 +49,7 @@ export class AccountingService {
             });
 
             let oldPages = await this.cacheService.get<string[]>(
-                `${chainId}-${id}-project-accounting-pages`
+                `${chainId}-${id}-project-income-pages`
             );
             oldPages =
                 oldPages == null
@@ -58,11 +58,26 @@ export class AccountingService {
                       ? oldPages
                       : oldPages.concat([cacheDataKey]);
 
-            await this.cacheService.set(`${chainId}-${id}-project-accounting-pages`, oldPages, {
+            await this.cacheService.set(`${chainId}-${id}-project-income-pages`, oldPages, {
                 ttl: Number(process.env.STATISTIC_TTL)
             });
         }
 
         return returnData;
+    }
+
+    async removeProjectIncomes(chainId: number, id: number) {
+        const pages = await this.cacheService.get<string[]>(
+            `${chainId}-${id}-project-income-pages`
+        );
+
+        if (pages) {
+            for (let i = 0; i < pages.length; i++) {
+                const page = pages[i];
+                await this.cacheService.del(page);
+            }
+
+            await this.cacheService.del(`${chainId}-${id}-project-income-pages`);
+        }
     }
 }

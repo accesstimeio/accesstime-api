@@ -1,5 +1,5 @@
 import { gql } from "graphql-request";
-import { Address } from "viem";
+import { Address, Hash } from "viem";
 
 export type CountDeploymentsResponse = {
     deploymentCount: number;
@@ -329,6 +329,37 @@ export const PurchasesDocument = gql`
             }
             totalCount
             pageInfo {
+                endCursor
+            }
+        }
+    }
+`;
+
+export type SyncStatisticsResponse = {
+    address: Address;
+    id: Hash;
+    type: number;
+    value: string;
+};
+
+export const SyncStatisticsDocument = gql`
+    query SyncStatisticsDocument($limit: Int!, $after: String, $timeIndex: BigInt) {
+        statistics(
+            limit: $limit
+            after: $after
+            orderBy: "timestamp"
+            orderDirection: "desc"
+            where: { timeGap: "604800", timeIndex: $timeIndex }
+        ) {
+            items {
+                address
+                id
+                type
+                value
+            }
+            totalCount
+            pageInfo {
+                hasNextPage
                 endCursor
             }
         }

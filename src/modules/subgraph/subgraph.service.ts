@@ -2,7 +2,12 @@ import { Inject, Injectable, forwardRef } from "@nestjs/common";
 import { CACHE_MANAGER, Cache } from "@nestjs/cache-manager";
 import { GraphQLClient } from "graphql-request";
 import { Address, Hash } from "viem";
-import { Chain, extractDomain, SUPPORTED_CHAIN } from "@accesstimeio/accesstime-common";
+import {
+    Chain,
+    extractDomain,
+    StatisticTimeGap,
+    SUPPORTED_CHAIN
+} from "@accesstimeio/accesstime-common";
 
 import { SUBGRAPH_TYPE, SUPPORTED_SUBGRAPH_TYPES } from "src/common";
 
@@ -55,7 +60,9 @@ import {
     AccessTimeUsersDocument,
     AccessTimeUsersResponse,
     PurchasesResponse,
-    PurchasesDocument
+    PurchasesDocument,
+    SyncStatisticsDocument,
+    SyncStatisticsResponse
 } from "./query/ponder";
 
 import { DeploymentService } from "../deployment/deployment.service";
@@ -74,6 +81,7 @@ export class SubgraphService {
     private clientUrls: { [key: number]: string } = {};
     private clientTypes: { [key: number]: SUBGRAPH_TYPE } = {};
     private syncBusy: boolean = false;
+    private syncStatisticsBusy: boolean = false;
     constructor(
         @Inject(CACHE_MANAGER) private cacheService: Cache,
         @Inject(forwardRef(() => DeploymentService))
@@ -129,6 +137,39 @@ export class SubgraphService {
                 return Array.isArray(paccessTimes?.items) ? paccessTimes.items.reverse() : [];
             default:
                 return [];
+        }
+    }
+
+    private async syncStatisticsCall(chainId: SUPPORTED_CHAIN, pageCursor?: string) {
+        const limit = Number(process.env.PAGE_ITEM_LIMIT);
+        const timeIndex = (BigInt(Date.now()) / 1000n / BigInt(StatisticTimeGap.WEEK)).toString();
+        pageCursor ??= null;
+        switch (this.clientTypes[chainId]) {
+            case "thegraph":
+                return { items: [], totalCount: 0, pageCursor: null, hasNextPage: false };
+            case "ponder":
+                const presult = await this.getClient(chainId).request(SyncStatisticsDocument, {
+                    limit,
+                    after: pageCursor,
+                    timeIndex
+                });
+                const { statistics } = presult as {
+                    statistics: {
+                        items: SyncStatisticsResponse[];
+                        totalCount: number;
+                        pageInfo: { endCursor: string | null; hasNextPage: boolean };
+                    };
+                };
+                return statistics
+                    ? {
+                          items: statistics.items,
+                          totalCount: statistics.totalCount,
+                          pageCursor: statistics.pageInfo.endCursor,
+                          hasNextPage: statistics.pageInfo.hasNextPage
+                      }
+                    : { items: [], totalCount: 0, pageCursor: null, hasNextPage: false };
+            default:
+                return { items: [], totalCount: 0, pageCursor: null, hasNextPage: false };
         }
     }
 
@@ -214,6 +255,61 @@ export class SubgraphService {
         } catch (err) {
             this.syncBusy = false;
             console.error("[sync]: Subgraph query failed!", err);
+        }
+    }
+
+    async syncStatistics() {
+        try {
+            if (!this.syncStatisticsBusy) {
+                this.syncStatisticsBusy = true;
+                for (let i = 0; i < Chain.ids.length; i++) {
+                    const chainId = Chain.ids[i];
+                    const factory = this.factoryService.client[chainId];
+
+                    let pageCursor: string | undefined = undefined;
+                    let endLoop: boolean = false;
+
+                    while (endLoop) {
+                        const statistics = await this.syncStatisticsCall(chainId, pageCursor);
+
+                        for (let i2 = 0; i2 < statistics.items.length; i2++) {
+                            const statistic = statistics.items[i2];
+                            const [, id, , , , ,] = await factory.read.deploymentDetails([
+                                statistic.address
+                            ]);
+                            const projectId = Number(id.toString());
+                            const statisticCacheKey = `statistic-${statistic.id}`;
+                            console.log(chainId, projectId, statisticCacheKey, "check");
+                            const lastSaved =
+                                await this.cacheService.get<string>(statisticCacheKey);
+
+                            if (lastSaved && lastSaved != statistic.value) {
+                                console.log(chainId, projectId, statisticCacheKey, "clear");
+                                await this.statisticService.removeProjectStatistics(
+                                    chainId,
+                                    projectId
+                                );
+                                await this.userService.removeProjectUsers(chainId, projectId);
+                                await this.accountingService.removeProjectIncomes(
+                                    chainId,
+                                    projectId
+                                );
+                            }
+
+                            await this.cacheService.set(statisticCacheKey, statistic.value, {
+                                ttl: Number(process.env.STATISTIC_TTL) * 2
+                            });
+                        }
+
+                        pageCursor = statistics.pageCursor;
+                        endLoop = !statistics.hasNextPage;
+                    }
+                }
+                this.syncStatisticsBusy = false;
+            }
+        } catch (err) {
+            this.syncStatisticsBusy = false;
+            console.error("[syncStatistics]: Subgraph query failed!", err);
         }
     }
 

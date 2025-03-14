@@ -11,4 +11,9 @@ export class CronService {
     subgraphSync() {
         this.subgraphService.sync();
     }
+
+    @Cron(CronExpression.EVERY_10_MINUTES)
+    subgraphSyncStatistics() {
+        this.subgraphService.syncStatistics();
+    }
 }
