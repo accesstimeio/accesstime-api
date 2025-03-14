@@ -20,6 +20,7 @@ import { PortalLinkModule } from "./modules/portal-link/portal-link.module";
 import { FactoryModule } from "./modules/factory/factory.module";
 import { StatisticModule } from "./modules/statistic/statistic.module";
 import { UserModule } from "./modules/user/user.module";
+import { AccountingModule } from "./modules/accounting/accounting.module";
 
 const NODE_ENV = process.env.NODE_ENV;
 
@@ -66,6 +67,8 @@ const NODE_ENV = process.env.NODE_ENV;
         PortalCreatorModule,
         PortalLinkModule,
         StatisticModule,
+        UserModule,
+        AccountingModule,
         RouterModule.register([
             {
                 path: "portal",
@@ -99,6 +102,10 @@ const NODE_ENV = process.env.NODE_ENV;
                     {
                         path: "user",
                         module: UserModule
+                    },
+                    {
+                        path: "accounting",
+                        module: AccountingModule
                     }
                 ]
             }

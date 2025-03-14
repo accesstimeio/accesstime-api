@@ -53,7 +53,9 @@ import {
     StatisticsDocument,
     StatisticDocument,
     AccessTimeUsersDocument,
-    AccessTimeUsersResponse
+    AccessTimeUsersResponse,
+    PurchasesResponse,
+    PurchasesDocument
 } from "./query/ponder";
 
 import { DeploymentService } from "../deployment/deployment.service";
@@ -63,6 +65,8 @@ import { ProjectService } from "../project/project.service";
 import { PortalService } from "../portal/portal.service";
 import { FactoryService } from "../factory/factory.service";
 import { StatisticService } from "../statistic/statistic.service";
+import { UserService } from "../user/user.service";
+import { AccountingService } from "../accounting/accounting.service";
 
 @Injectable()
 export class SubgraphService {
@@ -80,7 +84,11 @@ export class SubgraphService {
         private readonly portalService: PortalService,
         private readonly factoryService: FactoryService,
         @Inject(forwardRef(() => StatisticService))
-        private readonly statisticService: StatisticService
+        private readonly statisticService: StatisticService,
+        @Inject(forwardRef(() => UserService))
+        private readonly userService: UserService,
+        @Inject(forwardRef(() => AccountingService))
+        private readonly accountingService: AccountingService
     ) {
         const subgraphUrls = process.env.SUBGRAPH_URL.split(",");
         const subgraphTypes = process.env.SUBGRAPH_TYPE.split(",");
@@ -841,6 +849,52 @@ export class SubgraphService {
         } catch (_err) {
             console.log(_err);
             throw new Error("[accessTimeUsers]: Subgraph query failed!");
+        }
+    }
+
+    async purchases(
+        chainId: number,
+        address: Address,
+        limit: number,
+        ponderPageCursor?: string | null
+    ): Promise<{
+        items: PurchasesResponse[];
+        totalCount: number;
+        pageCursor: string | null;
+    }> {
+        try {
+            ponderPageCursor ??= null;
+
+            switch (this.clientTypes[chainId]) {
+                case "thegraph":
+                    return { items: [], totalCount: 0, pageCursor: null };
+                case "ponder":
+                    const presult = await this.getClient(chainId).request(PurchasesDocument, {
+                        limit,
+                        after: ponderPageCursor,
+                        accessTimeAddress: address
+                    });
+                    const { purchases } = presult as {
+                        purchases: {
+                            items: PurchasesResponse[];
+                            totalCount: number;
+                            pageInfo: { endCursor: string | null };
+                        };
+                    };
+
+                    return purchases
+                        ? {
+                              items: purchases.items,
+                              totalCount: purchases.totalCount,
+                              pageCursor: purchases.pageInfo.endCursor
+                          }
+                        : { items: [], totalCount: 0, pageCursor: null };
+                default:
+                    return { items: [], totalCount: 0, pageCursor: null };
+            }
+        } catch (_err) {
+            console.log(_err);
+            throw new Error("[purchases]: Subgraph query failed!");
         }
     }
 }

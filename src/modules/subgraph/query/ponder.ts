@@ -298,3 +298,39 @@ export const AccessTimeUsersDocument = gql`
         }
     }
 `;
+
+export type PurchasesResponse = {
+    accessTimeAddress: Address;
+    address: Address;
+    amount: string;
+    packageId: string;
+    paymentAmount: string;
+    paymentMethod: Address;
+    timestamp: string;
+};
+
+export const PurchasesDocument = gql`
+    query PurchasesDocument($limit: Int!, $after: String, $accessTimeAddress: String) {
+        purchases(
+            orderBy: "timestamp"
+            orderDirection: "desc"
+            limit: $limit
+            after: $after
+            where: { accessTimeAddress: $accessTimeAddress }
+        ) {
+            items {
+                accessTimeAddress
+                address
+                amount
+                packageId
+                paymentAmount
+                paymentMethod
+                timestamp
+            }
+            totalCount
+            pageInfo {
+                endCursor
+            }
+        }
+    }
+`;
