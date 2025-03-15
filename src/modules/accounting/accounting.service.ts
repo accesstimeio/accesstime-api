@@ -38,9 +38,12 @@ export class AccountingService {
             pageCursor
         );
 
+        const flooredMaxPage = Math.floor(purchases.totalCount / limit);
+        const maxPage = purchases.totalCount % limit > 0 ? flooredMaxPage + 1 : flooredMaxPage;
+
         const returnData = {
             ...purchases,
-            maxPage: Math.floor(purchases.totalCount / limit)
+            maxPage
         };
 
         if (purchases.items.length > 0) {

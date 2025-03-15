@@ -50,9 +50,12 @@ export class UserService {
             pageCursor
         );
 
+        const flooredMaxPage = Math.floor(projectUsers.totalCount / limit);
+        const maxPage = projectUsers.totalCount % limit > 0 ? flooredMaxPage + 1 : flooredMaxPage;
+
         const returnData = {
             ...projectUsers,
-            maxPage: Math.floor(projectUsers.totalCount / limit)
+            maxPage
         };
 
         if (projectUsers.items.length > 0) {

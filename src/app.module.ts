@@ -127,7 +127,7 @@ const NODE_ENV = process.env.NODE_ENV;
                     {
                         name: "default",
                         ttl: minutes(1),
-                        limit: 25
+                        limit: 48
                     }
                 ],
                 storage: new ThrottlerStorageRedisService({

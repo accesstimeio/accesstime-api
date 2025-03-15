@@ -105,9 +105,12 @@ export class DeploymentService {
                 pageCursor
             );
 
+            const flooredMaxPage = Math.floor(deploymentCount / limit);
+            const maxPage = deploymentCount % limit > 0 ? flooredMaxPage + 1 : flooredMaxPage;
+
             const response: ListDeploymentResponseDto = {
                 page: requestedPage,
-                maxPage: Math.floor(deploymentCount / limit),
+                maxPage,
                 deployments: listDeployments.deployments,
                 totalCount: deploymentCount,
                 pageCursor: listDeployments.pageCursor
@@ -126,9 +129,10 @@ export class DeploymentService {
             (await this.subgraphService.countDeployments(chainId, address)).deploymentCount
         );
         const limit = Number(process.env.PAGE_ITEM_LIMIT);
-        const maxPage = Math.floor(deploymentCount / limit);
+        const flooredMaxPage = Math.floor(deploymentCount / limit);
+        const maxPage = deploymentCount % limit > 0 ? flooredMaxPage + 1 : flooredMaxPage;
 
-        for (let i = 0; i < maxPage + 1; i++) {
+        for (let i = 0; i < maxPage; i++) {
             const dataKey = `${chainId}-${address.toLowerCase()}-deployments-page-${i}`;
             await this.cacheService.del(dataKey);
         }
