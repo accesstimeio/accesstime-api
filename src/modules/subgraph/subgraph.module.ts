@@ -9,6 +9,8 @@ import { ProjectModule } from "../project/project.module";
 import { PortalModule } from "../portal/portal.module";
 import { FactoryModule } from "../factory/factory.module";
 import { StatisticModule } from "../statistic/statistic.module";
+import { UserModule } from "../user/user.module";
+import { AccountingModule } from "../accounting/accounting.module";
 
 @Module({
     imports: [
@@ -24,7 +26,9 @@ import { StatisticModule } from "../statistic/statistic.module";
         forwardRef(() => ProjectModule),
         forwardRef(() => PortalModule),
         FactoryModule,
-        forwardRef(() => StatisticModule)
+        forwardRef(() => StatisticModule),
+        forwardRef(() => UserModule),
+        forwardRef(() => AccountingModule)
     ],
     controllers: [],
     providers: [SubgraphService],

@@ -1,5 +1,5 @@
 import { gql } from "graphql-request";
-import { Address } from "viem";
+import { Address, Hash } from "viem";
 
 export type CountDeploymentsResponse = {
     deploymentCount: number;
@@ -260,6 +260,106 @@ export const StatisticDocument = gql`
         statistic(id: $id) {
             timeIndex
             value
+        }
+    }
+`;
+
+export type AccessTimeUsersResponse = {
+    address: Address;
+    totalPurchasedTime: string;
+    endTime: string;
+    usedPaymentMethods: Address[];
+};
+
+export const AccessTimeUsersDocument = gql`
+    query AccessTimeUsersDocument(
+        $limit: Int!
+        $after: String
+        $accessTimeAddress: String
+        $orderBy: String
+    ) {
+        accessTimeUsers(
+            limit: $limit
+            after: $after
+            where: { accessTimeAddress: $accessTimeAddress }
+            orderBy: $orderBy
+            orderDirection: "desc"
+        ) {
+            items {
+                address
+                totalPurchasedTime
+                endTime
+                usedPaymentMethods
+            }
+            pageInfo {
+                endCursor
+            }
+            totalCount
+        }
+    }
+`;
+
+export type PurchasesResponse = {
+    accessTimeAddress: Address;
+    address: Address;
+    amount: string;
+    packageId: string;
+    paymentAmount: string;
+    paymentMethod: Address;
+    timestamp: string;
+};
+
+export const PurchasesDocument = gql`
+    query PurchasesDocument($limit: Int!, $after: String, $accessTimeAddress: String) {
+        purchases(
+            orderBy: "timestamp"
+            orderDirection: "desc"
+            limit: $limit
+            after: $after
+            where: { accessTimeAddress: $accessTimeAddress }
+        ) {
+            items {
+                accessTimeAddress
+                address
+                amount
+                packageId
+                paymentAmount
+                paymentMethod
+                timestamp
+            }
+            totalCount
+            pageInfo {
+                endCursor
+            }
+        }
+    }
+`;
+
+export type SyncStatisticsResponse = {
+    address: Address;
+    id: Hash;
+    type: number;
+    value: string;
+};
+
+export const SyncStatisticsDocument = gql`
+    query SyncStatisticsDocument($limit: Int!, $after: String, $timeIndex: BigInt) {
+        statistics(
+            limit: $limit
+            after: $after
+            where: { timeGap: "604800", timeIndex: $timeIndex }
+        ) {
+            items {
+                address
+                id
+                type
+                value
+            }
+            totalCount
+            pageInfo {
+                hasNextPage
+                endCursor
+            }
         }
     }
 `;

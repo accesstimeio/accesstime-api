@@ -166,6 +166,7 @@ export class StatisticService {
         const newTicks: StatisticsResponseDto[] = [];
         const lastTickIndex = BigInt(data[0].timeIndex);
 
+        // start
         if (currentIndex != lastTickIndex) {
             const requiredTickCount =
                 currentIndex - lastTickIndex > BigInt(this.defaultTimeTick)
@@ -183,6 +184,7 @@ export class StatisticService {
             }
         }
 
+        // between
         for (let i2 = 0; i2 < data.length; i2++) {
             const timeTick = data[i2];
             const nextTimeTick = data[i2 + 1];
@@ -197,7 +199,7 @@ export class StatisticService {
                 const gapLength = Number(timeTick.timeIndex) - Number(nextTimeTick.timeIndex);
                 let fillValue: string = "0";
                 if (type == StatisticType.USER) {
-                    fillValue = data[0].value;
+                    fillValue = nextTimeTick.value;
                 }
                 for (let i3 = 1; i3 < gapLength; i3++) {
                     if (newTicks.length >= this.defaultTimeTick) {
@@ -211,6 +213,7 @@ export class StatisticService {
             }
         }
 
+        // end
         const requiredZeroTickCount = this.defaultTimeTick - newTicks.length;
         const lastTick = newTicks[newTicks.length - 1];
         for (let i4 = 0; i4 < requiredZeroTickCount; i4++) {

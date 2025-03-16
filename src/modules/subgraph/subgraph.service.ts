@@ -2,7 +2,12 @@ import { Inject, Injectable, forwardRef } from "@nestjs/common";
 import { CACHE_MANAGER, Cache } from "@nestjs/cache-manager";
 import { GraphQLClient } from "graphql-request";
 import { Address, Hash } from "viem";
-import { Chain, extractDomain, SUPPORTED_CHAIN } from "@accesstimeio/accesstime-common";
+import {
+    Chain,
+    extractDomain,
+    StatisticTimeGap,
+    SUPPORTED_CHAIN
+} from "@accesstimeio/accesstime-common";
 
 import { SUBGRAPH_TYPE, SUPPORTED_SUBGRAPH_TYPES } from "src/common";
 
@@ -51,7 +56,13 @@ import {
     CountWeeklyVoteProjectsResponse as pCountWeeklyVoteProjectsResponse,
     StatisticsResponse,
     StatisticsDocument,
-    StatisticDocument
+    StatisticDocument,
+    AccessTimeUsersDocument,
+    AccessTimeUsersResponse,
+    PurchasesResponse,
+    PurchasesDocument,
+    SyncStatisticsDocument,
+    SyncStatisticsResponse
 } from "./query/ponder";
 
 import { DeploymentService } from "../deployment/deployment.service";
@@ -61,6 +72,8 @@ import { ProjectService } from "../project/project.service";
 import { PortalService } from "../portal/portal.service";
 import { FactoryService } from "../factory/factory.service";
 import { StatisticService } from "../statistic/statistic.service";
+import { UserService } from "../user/user.service";
+import { AccountingService } from "../accounting/accounting.service";
 
 @Injectable()
 export class SubgraphService {
@@ -68,6 +81,7 @@ export class SubgraphService {
     private clientUrls: { [key: number]: string } = {};
     private clientTypes: { [key: number]: SUBGRAPH_TYPE } = {};
     private syncBusy: boolean = false;
+    private syncStatisticsBusy: boolean = false;
     constructor(
         @Inject(CACHE_MANAGER) private cacheService: Cache,
         @Inject(forwardRef(() => DeploymentService))
@@ -78,7 +92,11 @@ export class SubgraphService {
         private readonly portalService: PortalService,
         private readonly factoryService: FactoryService,
         @Inject(forwardRef(() => StatisticService))
-        private readonly statisticService: StatisticService
+        private readonly statisticService: StatisticService,
+        @Inject(forwardRef(() => UserService))
+        private readonly userService: UserService,
+        @Inject(forwardRef(() => AccountingService))
+        private readonly accountingService: AccountingService
     ) {
         const subgraphUrls = process.env.SUBGRAPH_URL.split(",");
         const subgraphTypes = process.env.SUBGRAPH_TYPE.split(",");
@@ -119,6 +137,39 @@ export class SubgraphService {
                 return Array.isArray(paccessTimes?.items) ? paccessTimes.items.reverse() : [];
             default:
                 return [];
+        }
+    }
+
+    private async syncStatisticsCall(chainId: SUPPORTED_CHAIN, pageCursor?: string) {
+        const limit = Number(process.env.PAGE_ITEM_LIMIT);
+        const timeIndex = (BigInt(Date.now()) / 1000n / BigInt(StatisticTimeGap.WEEK)).toString();
+        pageCursor ??= null;
+        switch (this.clientTypes[chainId]) {
+            case "thegraph":
+                return { items: [], totalCount: 0, pageCursor: null, hasNextPage: false };
+            case "ponder":
+                const presult = await this.getClient(chainId).request(SyncStatisticsDocument, {
+                    limit,
+                    after: pageCursor,
+                    timeIndex
+                });
+                const { statistics } = presult as {
+                    statistics: {
+                        items: SyncStatisticsResponse[];
+                        totalCount: number;
+                        pageInfo: { endCursor: string | null; hasNextPage: boolean };
+                    };
+                };
+                return statistics
+                    ? {
+                          items: statistics.items,
+                          totalCount: statistics.totalCount,
+                          pageCursor: statistics.pageInfo.endCursor,
+                          hasNextPage: statistics.pageInfo.hasNextPage
+                      }
+                    : { items: [], totalCount: 0, pageCursor: null, hasNextPage: false };
+            default:
+                return { items: [], totalCount: 0, pageCursor: null, hasNextPage: false };
         }
     }
 
@@ -204,6 +255,63 @@ export class SubgraphService {
         } catch (err) {
             this.syncBusy = false;
             console.error("[sync]: Subgraph query failed!", err);
+        }
+    }
+
+    async syncStatistics() {
+        try {
+            if (!this.syncStatisticsBusy) {
+                this.syncStatisticsBusy = true;
+                for (let i = 0; i < Chain.ids.length; i++) {
+                    const chainId = Chain.ids[i];
+                    const factory = this.factoryService.client[chainId];
+
+                    let pageCursor: string | undefined = undefined;
+                    let endLoop: boolean = true;
+
+                    const clearQueue: number[] = [];
+
+                    while (endLoop) {
+                        const statistics = await this.syncStatisticsCall(chainId, pageCursor);
+
+                        for (let i2 = 0; i2 < statistics.items.length; i2++) {
+                            const statistic = statistics.items[i2];
+                            const [, id, , , , ,] = await factory.read.deploymentDetails([
+                                statistic.address
+                            ]);
+                            const projectId = Number(id.toString());
+                            const statisticCacheKey = `statistic-sync-${statistic.id}`;
+                            const lastSaved =
+                                await this.cacheService.get<string>(statisticCacheKey);
+
+                            if (lastSaved && lastSaved != statistic.value) {
+                                if (!clearQueue.includes(projectId)) {
+                                    clearQueue.push(projectId);
+                                }
+                            }
+
+                            await this.cacheService.set(statisticCacheKey, statistic.value, {
+                                ttl: Number(process.env.STATISTIC_TTL) * 2
+                            });
+                        }
+
+                        pageCursor = statistics.pageCursor;
+                        endLoop = statistics.hasNextPage;
+                    }
+
+                    for (let i3 = 0; i3 < clearQueue.length; i3++) {
+                        const projectId = clearQueue[i3];
+
+                        await this.statisticService.removeProjectStatistics(chainId, projectId);
+                        await this.userService.removeProjectUsers(chainId, projectId);
+                        await this.accountingService.removeProjectIncomes(chainId, projectId);
+                    }
+                }
+                this.syncStatisticsBusy = false;
+            }
+        } catch (err) {
+            this.syncStatisticsBusy = false;
+            console.error("[syncStatistics]: Subgraph query failed!", err);
         }
     }
 
@@ -402,10 +510,10 @@ export class SubgraphService {
                 case "ponder":
                     const presult = await this.getClient(chainId).request(pCountProjectsDocument, {
                         // eslint-disable-next-line prettier/prettier
-                        filter: { "AND": paymentMethods.map((paymentMethod) => (
-                            {
+                        filter: {
+                            AND: paymentMethods.map((paymentMethod) => ({
                                 // eslint-disable-next-line prettier/prettier
-                                "paymentMethods_has": paymentMethod.toLowerCase()
+                                paymentMethods_has: paymentMethod.toLowerCase()
                             }))
                         }
                     });
@@ -451,10 +559,10 @@ export class SubgraphService {
                         limit,
                         after: ponderPageCursor,
                         // eslint-disable-next-line prettier/prettier
-                        filter: { "AND": paymentMethods.map((paymentMethod) => (
-                            {
+                        filter: {
+                            AND: paymentMethods.map((paymentMethod) => ({
                                 // eslint-disable-next-line prettier/prettier
-                                "paymentMethods_has": paymentMethod.toLowerCase()
+                                paymentMethods_has: paymentMethod.toLowerCase()
                             }))
                         }
                     });
@@ -517,10 +625,10 @@ export class SubgraphService {
                             limit,
                             after: ponderPageCursor,
                             // eslint-disable-next-line prettier/prettier
-                            filter: { "AND": paymentMethods.map((paymentMethod) => (
-                                {
+                            filter: {
+                                AND: paymentMethods.map((paymentMethod) => ({
                                     // eslint-disable-next-line prettier/prettier
-                                    "paymentMethods_has": paymentMethod.toLowerCase()
+                                    paymentMethods_has: paymentMethod.toLowerCase()
                                 }))
                             }
                         }
@@ -587,10 +695,10 @@ export class SubgraphService {
                 case "ponder":
                     const filterContent: any[] = paymentMethods.map((paymentMethod) => ({
                         // eslint-disable-next-line prettier/prettier
-                        "accessTimePaymentMethods_has": paymentMethod.toLowerCase()
+                        accessTimePaymentMethods_has: paymentMethod.toLowerCase()
                     }));
                     // eslint-disable-next-line prettier/prettier
-                    filterContent.push({ "epochWeek": epochWeek.toString() });
+                    filterContent.push({ epochWeek: epochWeek.toString() });
 
                     const presult = await this.getClient(chainId).request(
                         pWeeklyPopularProjectsDocument,
@@ -709,10 +817,10 @@ export class SubgraphService {
                 case "ponder":
                     const filterContent: any[] = paymentMethods.map((paymentMethod) => ({
                         // eslint-disable-next-line prettier/prettier
-                        "accessTimePaymentMethods_has": paymentMethod.toLowerCase()
+                        accessTimePaymentMethods_has: paymentMethod.toLowerCase()
                     }));
                     // eslint-disable-next-line prettier/prettier
-                    filterContent.push({ "epochWeek": epochWeek.toString() });
+                    filterContent.push({ epochWeek: epochWeek.toString() });
 
                     const presult = await this.getClient(chainId).request(
                         pCountWeeklyVoteProjectsDocument,
@@ -790,6 +898,101 @@ export class SubgraphService {
         } catch (_err) {
             console.log(_err);
             throw new Error("[statisticById]: Subgraph query failed!");
+        }
+    }
+
+    async accessTimeUsers(
+        chainId: number,
+        address: Address,
+        limit: number,
+        orderBy?: string,
+        ponderPageCursor?: string | null
+    ): Promise<{
+        items: AccessTimeUsersResponse[];
+        totalCount: number;
+        pageCursor: string | null;
+    }> {
+        try {
+            ponderPageCursor ??= null;
+            orderBy ??= "accessTimeAddress";
+
+            switch (this.clientTypes[chainId]) {
+                case "thegraph":
+                    return { items: [], totalCount: 0, pageCursor: null };
+                case "ponder":
+                    const presult = await this.getClient(chainId).request(AccessTimeUsersDocument, {
+                        limit,
+                        after: ponderPageCursor,
+                        accessTimeAddress: address,
+                        orderBy
+                    });
+                    const { accessTimeUsers } = presult as {
+                        accessTimeUsers: {
+                            items: AccessTimeUsersResponse[];
+                            totalCount: number;
+                            pageInfo: { endCursor: string | null };
+                        };
+                    };
+
+                    return accessTimeUsers
+                        ? {
+                              items: accessTimeUsers.items,
+                              totalCount: accessTimeUsers.totalCount,
+                              pageCursor: accessTimeUsers.pageInfo.endCursor
+                          }
+                        : { items: [], totalCount: 0, pageCursor: null };
+                default:
+                    return { items: [], totalCount: 0, pageCursor: null };
+            }
+        } catch (_err) {
+            console.log(_err);
+            throw new Error("[accessTimeUsers]: Subgraph query failed!");
+        }
+    }
+
+    async purchases(
+        chainId: number,
+        address: Address,
+        limit: number,
+        ponderPageCursor?: string | null
+    ): Promise<{
+        items: PurchasesResponse[];
+        totalCount: number;
+        pageCursor: string | null;
+    }> {
+        try {
+            ponderPageCursor ??= null;
+
+            switch (this.clientTypes[chainId]) {
+                case "thegraph":
+                    return { items: [], totalCount: 0, pageCursor: null };
+                case "ponder":
+                    const presult = await this.getClient(chainId).request(PurchasesDocument, {
+                        limit,
+                        after: ponderPageCursor,
+                        accessTimeAddress: address
+                    });
+                    const { purchases } = presult as {
+                        purchases: {
+                            items: PurchasesResponse[];
+                            totalCount: number;
+                            pageInfo: { endCursor: string | null };
+                        };
+                    };
+
+                    return purchases
+                        ? {
+                              items: purchases.items,
+                              totalCount: purchases.totalCount,
+                              pageCursor: purchases.pageInfo.endCursor
+                          }
+                        : { items: [], totalCount: 0, pageCursor: null };
+                default:
+                    return { items: [], totalCount: 0, pageCursor: null };
+            }
+        } catch (_err) {
+            console.log(_err);
+            throw new Error("[purchases]: Subgraph query failed!");
         }
     }
 }
