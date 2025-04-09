@@ -1,5 +1,5 @@
 import { createParamDecorator, ExecutionContext } from "@nestjs/common";
-import { Address, Hash } from "viem";
+import { Address, Hash, zeroAddress } from "viem";
 
 import { signatureCheck } from "../helpers";
 
@@ -21,11 +21,11 @@ export const Signer = createParamDecorator(async (data: boolean, ctx: ExecutionC
             if (verifyResult == true) {
                 signer = verifiedAddress;
             } else {
-                return undefined;
+                return zeroAddress;
             }
         } else {
-            return undefined;
+            return zeroAddress;
         }
     }
-    return signer.toLowerCase() as Address;
+    return signer ? (signer.toLowerCase() as Address) : zeroAddress;
 });

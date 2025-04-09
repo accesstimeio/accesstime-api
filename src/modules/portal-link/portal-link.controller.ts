@@ -38,7 +38,7 @@ export class PortalLinkController {
     @Post("/update-status/:hashedLink")
     updateStatus(
         @Param("hashedLink") hashedLink: Hash,
-        @Signer(true) signer: Address,
+        @Signer(false) signer: Address,
         @Body() data: UpdateStatusDto
     ) {
         return this.portalLinkService.updateStatus(hashedLink, data.allowed, signer);
