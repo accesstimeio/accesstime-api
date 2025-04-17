@@ -72,13 +72,11 @@ export class PortalService {
 
     async getExplore(
         chainId: number,
-        page?: number,
         sort?: SUPPORTED_SORT_TYPE,
         paymentMethods?: Address[],
         pageCursor?: string,
         user?: Address
     ): Promise<ExploreResponseDto> {
-        const queryPage = page ?? 1;
         const limit = Number(process.env.PAGE_ITEM_LIMIT);
         let querySort: SUPPORTED_SORT_TYPE = Portal.defaultSortType;
         let countProjects: number = 0;
@@ -131,22 +129,11 @@ export class PortalService {
                 paymentMethods
             );
         }
-        const requestable = limit - (queryPage * limit - countProjects) > 0 ? true : false;
-
-        if (queryPage != 1 && !requestable) {
-            throw new HttpException(
-                {
-                    errors: { message: "Requested page exceeds page limit." }
-                },
-                HttpStatus.EXPECTATION_FAILED
-            );
-        }
 
         switch (querySort) {
             case "newest":
                 const newestProjects = await this.subgraphService.newestProjects(
                     chainId,
-                    queryPage,
                     paymentMethods,
                     pageCursor
                 );
@@ -158,7 +145,7 @@ export class PortalService {
                             accessTimeId: Number(accessTimeId),
                             avatarUrl: null,
                             votePoint: Number(totalVotePoint),
-                            voteParticipantCount: Number(totalVoteParticipantCount),
+                            voteParticipantCount: totalVoteParticipantCount,
                             isFavorited: false,
                             categories: [],
                             domainVerify: false,
@@ -171,7 +158,6 @@ export class PortalService {
             case "top_rated":
                 const topRatedProjects = await this.subgraphService.topRatedProjects(
                     chainId,
-                    queryPage,
                     paymentMethods,
                     pageCursor
                 );
@@ -183,7 +169,7 @@ export class PortalService {
                             accessTimeId: Number(accessTimeId),
                             avatarUrl: null,
                             votePoint: Number(totalVotePoint),
-                            voteParticipantCount: Number(totalVoteParticipantCount),
+                            voteParticipantCount: totalVoteParticipantCount,
                             isFavorited: false,
                             categories: [],
                             domainVerify: false,
@@ -197,16 +183,15 @@ export class PortalService {
                 const weeklyPopularProjects = await this.subgraphService.weeklyPopularProjects(
                     chainId,
                     getEpochWeek(),
-                    queryPage,
                     paymentMethods,
                     pageCursor
                 );
 
                 weeklyPopularProjects.projects.forEach(
-                    ({ accessTime, votePoint, participantCount }) => {
+                    ({ accessTimeAddress, accessTimeId, votePoint, participantCount }) => {
                         projects.push({
-                            id: accessTime.id,
-                            accessTimeId: Number(accessTime.accessTimeId),
+                            id: accessTimeAddress,
+                            accessTimeId: Number(accessTimeId),
                             avatarUrl: null,
                             votePoint: Number(votePoint),
                             voteParticipantCount: Number(participantCount),
@@ -353,7 +338,7 @@ export class PortalService {
             avatarUrl,
             votePoint: projectWeeklyVote.length > 0 ? Number(projectWeeklyVote[0].votePoint) : 0,
             voteParticipantCount:
-                projectWeeklyVote.length > 0 ? Number(projectWeeklyVote[0].participantCount) : 0,
+                projectWeeklyVote.length > 0 ? projectWeeklyVote[0].participantCount : 0,
             isFavorited,
             socials,
             categories,
@@ -422,7 +407,7 @@ export class PortalService {
                 : 0;
         const previousVoteParticipantCount =
             projectPreviousWeeklyVote.length > 0
-                ? Number(projectPreviousWeeklyVote[0].participantCount)
+                ? projectPreviousWeeklyVote[0].participantCount
                 : 0;
 
         const projectWeeklyVote = await this.subgraphService.projectWeeklyVote(
@@ -432,7 +417,7 @@ export class PortalService {
         );
         const votePoint = projectWeeklyVote.length > 0 ? Number(projectWeeklyVote[0].votePoint) : 0;
         const voteParticipantCount =
-            projectWeeklyVote.length > 0 ? Number(projectWeeklyVote[0].participantCount) : 0;
+            projectWeeklyVote.length > 0 ? projectWeeklyVote[0].participantCount : 0;
 
         return {
             previousVotePoint,

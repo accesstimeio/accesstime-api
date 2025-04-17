@@ -6,20 +6,20 @@ export type CountDeploymentsResponse = {
 };
 
 export const CountDeploymentsDocument = gql`
-    query CountDeployments($owner: String!) {
-        owner(id: $owner) {
+    query CountDeployments($chainId: Float!, $owner: String!) {
+        owner(id: $owner, chainId: $chainId) {
             deploymentCount
         }
     }
 `;
 
 export const LastDeploymentsDocument = gql`
-    query LastDeployments($owner: String!, $limit: Int!) {
+    query LastDeployments($chainId: Int, $owner: String!, $limit: Int!) {
         accessTimes(
             orderDirection: "desc"
             orderBy: "updateTimestamp"
             limit: $limit
-            where: { owner: $owner }
+            where: { owner: $owner, chainId: $chainId }
         ) {
             items {
                 accessTimeId
@@ -31,13 +31,13 @@ export const LastDeploymentsDocument = gql`
 `;
 
 export const ListDeploymentsDocument = gql`
-    query ListDeployments($owner: String!, $limit: Int!, $after: String) {
+    query ListDeployments($chainId: Int, $owner: String!, $limit: Int!, $after: String) {
         accessTimes(
             orderDirection: "desc"
             orderBy: "updateTimestamp"
             limit: $limit
             after: $after
-            where: { owner: $owner }
+            where: { owner: $owner, chainId: $chainId }
         ) {
             items {
                 accessTimeId
@@ -52,8 +52,8 @@ export const ListDeploymentsDocument = gql`
 `;
 
 export const ProjectByIdDocument = gql`
-    query ProjectById($id: BigInt!) {
-        accessTimes(where: { accessTimeId: $id }) {
+    query ProjectById($chainId: Int, $id: BigInt!) {
+        accessTimes(where: { accessTimeId: $id, chainId: $chainId }) {
             items {
                 id
                 extraTimes
@@ -71,9 +71,23 @@ export const ProjectByIdDocument = gql`
     }
 `;
 
+export type SyncResponse = {
+    accessTimeId: string;
+    id: Address;
+    owner: Address;
+    prevOwner: Address;
+    nextOwner: Address;
+    updateTimestamp: string;
+};
+
 export const SyncDocument = gql`
-    query Sync {
-        accessTimes(orderDirection: "desc", orderBy: "updateTimestamp", limit: 25) {
+    query Sync($chainId: Int) {
+        accessTimes(
+            where: { chainId: $chainId }
+            orderDirection: "desc"
+            orderBy: "updateTimestamp"
+            limit: 25
+        ) {
             items {
                 accessTimeId
                 id
@@ -87,8 +101,8 @@ export const SyncDocument = gql`
 `;
 
 export const RatesDocument = gql`
-    query Rates {
-        factoryRates {
+    query Rates($chainId: Int) {
+        factoryRates(where: { chainId: $chainId }) {
             items {
                 id
                 rate
@@ -197,9 +211,9 @@ export type ProjectWeeklyVoteResponse = {
 };
 
 export const ProjectWeeklyVoteDocument = gql`
-    query ProjectWeeklyVote($epochWeek: BigInt!, $accessTime: String!) {
+    query ProjectWeeklyVote($chainId: Int, $epochWeek: BigInt!, $accessTime: String!) {
         accessVotes(
-            where: { AND: [{ accessTimeAddress: $accessTime }, { epochWeek: $epochWeek }] }
+            where: { chainId: $chainId, accessTimeAddress: $accessTime, epochWeek: $epochWeek }
         ) {
             items {
                 participantCount
@@ -228,6 +242,7 @@ export type StatisticsResponse = {
 
 export const StatisticsDocument = gql`
     query StatisticsDocument(
+        $chainId: Int
         $limit: Int
         $address: String
         $internalType: Int
@@ -239,12 +254,11 @@ export const StatisticsDocument = gql`
             orderBy: "timeIndex"
             orderDirection: "desc"
             where: {
-                AND: {
-                    address: $address
-                    timeGap: $timeGap
-                    internalType: $internalType
-                    type: $type
-                }
+                chainId: $chainId
+                address: $address
+                timeGap: $timeGap
+                internalType: $internalType
+                type: $type
             }
         ) {
             items {
@@ -256,8 +270,8 @@ export const StatisticsDocument = gql`
 `;
 
 export const StatisticDocument = gql`
-    query StatisticDocument($id: String!) {
-        statistic(id: $id) {
+    query StatisticDocument($id: String!, $chainId: Float!) {
+        statistic(id: $id, chainId: $chainId) {
             timeIndex
             value
         }
@@ -273,6 +287,7 @@ export type AccessTimeUsersResponse = {
 
 export const AccessTimeUsersDocument = gql`
     query AccessTimeUsersDocument(
+        $chainId: Int
         $limit: Int!
         $after: String
         $accessTimeAddress: String
@@ -281,7 +296,7 @@ export const AccessTimeUsersDocument = gql`
         accessTimeUsers(
             limit: $limit
             after: $after
-            where: { accessTimeAddress: $accessTimeAddress }
+            where: { accessTimeAddress: $accessTimeAddress, chainId: $chainId }
             orderBy: $orderBy
             orderDirection: "desc"
         ) {
@@ -310,13 +325,18 @@ export type PurchasesResponse = {
 };
 
 export const PurchasesDocument = gql`
-    query PurchasesDocument($limit: Int!, $after: String, $accessTimeAddress: String) {
+    query PurchasesDocument(
+        $chainId: Int
+        $limit: Int!
+        $after: String
+        $accessTimeAddress: String
+    ) {
         purchases(
             orderBy: "timestamp"
             orderDirection: "desc"
             limit: $limit
             after: $after
-            where: { accessTimeAddress: $accessTimeAddress }
+            where: { accessTimeAddress: $accessTimeAddress, chainId: $chainId }
         ) {
             items {
                 accessTimeAddress
@@ -343,11 +363,11 @@ export type SyncStatisticsResponse = {
 };
 
 export const SyncStatisticsDocument = gql`
-    query SyncStatisticsDocument($limit: Int!, $after: String, $timeIndex: BigInt) {
+    query SyncStatisticsDocument($chainId: Int, $limit: Int!, $after: String, $timeIndex: BigInt) {
         statistics(
             limit: $limit
             after: $after
-            where: { timeGap: "604800", timeIndex: $timeIndex }
+            where: { timeGap: "604800", timeIndex: $timeIndex, chainId: $chainId }
         ) {
             items {
                 address

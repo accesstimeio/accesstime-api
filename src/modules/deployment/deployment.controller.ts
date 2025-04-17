@@ -22,11 +22,6 @@ export class DeploymentController {
     }
 
     @ApiQuery({
-        name: "page",
-        type: Number,
-        required: false
-    })
-    @ApiQuery({
         name: "pageCursor",
         type: String,
         required: false
@@ -38,10 +33,9 @@ export class DeploymentController {
     listDeployments(
         @Param("chainId") chainId: number,
         @Param("address") address: Address,
-        @Query("page") page?: number,
         @Query("pageCursor") pageCursor?: string
     ) {
-        return this.deploymentService.listDeployments(chainId, address, page, pageCursor);
+        return this.deploymentService.listDeployments(chainId, address, pageCursor);
     }
 
     @ApiResponse({
