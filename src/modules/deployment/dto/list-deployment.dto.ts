@@ -7,10 +7,6 @@ import { DeploymentDto } from "./deployment.dto";
 export class ListDeploymentResponseDto {
     @Expose()
     @ApiProperty()
-    page: number;
-
-    @Expose()
-    @ApiProperty()
     maxPage: number;
 
     @Expose()

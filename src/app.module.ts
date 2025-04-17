@@ -48,8 +48,7 @@ const NODE_ENV = process.env.NODE_ENV;
                 MINIO_ACCESS_KEY: Joi.string().required(),
                 MINIO_SECRET_KEY: Joi.string().required(),
                 MINIO_BUCKET_NAME: Joi.string().required(),
-                RRDA_URL: Joi.string().required(),
-                SUBGRAPH_TYPE: Joi.string().required() // thegraph - ponder
+                RRDA_URL: Joi.string().required()
             })
         }),
         ScheduleModule.forRoot(),

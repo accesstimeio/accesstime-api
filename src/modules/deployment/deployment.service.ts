@@ -1,6 +1,6 @@
 import { HttpException, HttpStatus, Inject, Injectable, forwardRef } from "@nestjs/common";
 import { CACHE_MANAGER, Cache } from "@nestjs/cache-manager";
-import { Address, isAddress } from "viem";
+import { Address, Hash, isAddress, keccak256, zeroHash } from "viem";
 
 import { LastDeploymentResponseDto, ListDeploymentResponseDto, RatesDto } from "./dto";
 
@@ -51,11 +51,9 @@ export class DeploymentService {
     async listDeployments(
         chainId: number,
         address: Address,
-        page?: number,
         pageCursor?: string
     ): Promise<ListDeploymentResponseDto> {
         const validAddress = isAddress(address);
-        const requestedPage = page ? Number(page) : 0;
 
         if (!validAddress) {
             throw new HttpException(
@@ -66,42 +64,19 @@ export class DeploymentService {
             );
         }
 
-        const dataKey = `${chainId}-${address.toLowerCase()}-deployments-page-${requestedPage}`;
+        const dataKey = `${chainId}-${address.toLowerCase()}-deployments-page-${keccak256((pageCursor as Hash) ?? zeroHash)}`;
 
         const cachedData = await this.cacheService.get<ListDeploymentResponseDto>(dataKey);
 
         if (cachedData) {
             return cachedData;
         } else {
-            const deploymentCount = Number(
-                (await this.subgraphService.countDeployments(chainId, address)).deploymentCount
-            );
+            const deploymentCount = await this.subgraphService.countDeployments(chainId, address);
             const limit = Number(process.env.PAGE_ITEM_LIMIT);
-            const requestable =
-                limit - ((requestedPage + 1) * limit - deploymentCount) > 0 ? true : false;
-
-            if (!requestable) {
-                if (requestedPage == 0) {
-                    return {
-                        page: 0,
-                        maxPage: 0,
-                        deployments: [],
-                        totalCount: 0,
-                        pageCursor: null
-                    };
-                }
-                throw new HttpException(
-                    {
-                        errors: { message: "Requested page exceeds page limit." }
-                    },
-                    HttpStatus.EXPECTATION_FAILED
-                );
-            }
 
             const listDeployments = await this.subgraphService.listDeployments(
                 chainId,
                 address,
-                requestedPage,
                 pageCursor
             );
 
@@ -109,7 +84,6 @@ export class DeploymentService {
             const maxPage = deploymentCount % limit > 0 ? flooredMaxPage + 1 : flooredMaxPage;
 
             const response: ListDeploymentResponseDto = {
-                page: requestedPage,
                 maxPage,
                 deployments: listDeployments.deployments,
                 totalCount: deploymentCount,
@@ -125,9 +99,7 @@ export class DeploymentService {
     }
 
     async removeListDeployments(chainId: number, address: Address) {
-        const deploymentCount = Number(
-            (await this.subgraphService.countDeployments(chainId, address)).deploymentCount
-        );
+        const deploymentCount = await this.subgraphService.countDeployments(chainId, address);
         const limit = Number(process.env.PAGE_ITEM_LIMIT);
         const flooredMaxPage = Math.floor(deploymentCount / limit);
         const maxPage = deploymentCount % limit > 0 ? flooredMaxPage + 1 : flooredMaxPage;
