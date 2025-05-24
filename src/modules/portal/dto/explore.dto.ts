@@ -21,8 +21,4 @@ export class ExploreResponseDto {
     @ValidateNested({ each: true })
     @Type(() => ProjectCardDto)
     projects: ProjectCardDto[];
-
-    @Expose()
-    @ApiProperty()
-    pageCursor: string | null;
 }

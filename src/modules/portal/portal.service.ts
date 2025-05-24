@@ -74,7 +74,7 @@ export class PortalService {
         chainId: number,
         sort?: SUPPORTED_SORT_TYPE,
         paymentMethods?: Address[],
-        pageCursor?: string,
+        page?: number,
         user?: Address
     ): Promise<ExploreResponseDto> {
         const limit = Number(process.env.PAGE_ITEM_LIMIT);
@@ -118,93 +118,30 @@ export class PortalService {
         }
 
         let projects: CacheProject[] = [];
-        let nextPageCursor: string | null = null;
 
-        if (querySort != "weekly_popular") {
-            countProjects = await this.subgraphService.countProjects(chainId, paymentMethods);
-        } else {
-            countProjects = await this.subgraphService.countWeeklyVoteProjects(
-                chainId,
-                getEpochWeek(),
-                paymentMethods
-            );
-        }
+        const apiResult = await this.subgraphService.apiPortalExplore(
+            chainId,
+            page,
+            querySort,
+            paymentMethods
+        );
 
-        switch (querySort) {
-            case "newest":
-                const newestProjects = await this.subgraphService.newestProjects(
-                    chainId,
-                    paymentMethods,
-                    pageCursor
-                );
-
-                newestProjects.projects.forEach(
-                    ({ id, accessTimeId, totalVotePoint, totalVoteParticipantCount }) => {
-                        projects.push({
-                            id,
-                            accessTimeId: Number(accessTimeId),
-                            avatarUrl: null,
-                            votePoint: Number(totalVotePoint),
-                            voteParticipantCount: totalVoteParticipantCount,
-                            isFavorited: false,
-                            categories: [],
-                            domainVerify: false,
-                            portalVerify: false
-                        });
-                    }
-                );
-                nextPageCursor = newestProjects.pageCursor;
-                break;
-            case "top_rated":
-                const topRatedProjects = await this.subgraphService.topRatedProjects(
-                    chainId,
-                    paymentMethods,
-                    pageCursor
-                );
-
-                topRatedProjects.projects.forEach(
-                    ({ id, accessTimeId, totalVotePoint, totalVoteParticipantCount }) => {
-                        projects.push({
-                            id,
-                            accessTimeId: Number(accessTimeId),
-                            avatarUrl: null,
-                            votePoint: Number(totalVotePoint),
-                            voteParticipantCount: totalVoteParticipantCount,
-                            isFavorited: false,
-                            categories: [],
-                            domainVerify: false,
-                            portalVerify: false
-                        });
-                    }
-                );
-                nextPageCursor = topRatedProjects.pageCursor;
-                break;
-            default:
-                const weeklyPopularProjects = await this.subgraphService.weeklyPopularProjects(
-                    chainId,
-                    getEpochWeek(),
-                    paymentMethods,
-                    pageCursor
-                );
-
-                weeklyPopularProjects.projects.forEach(
-                    ({ accessTimeAddress, accessTimeId, votePoint, participantCount }) => {
-                        projects.push({
-                            id: accessTimeAddress,
-                            accessTimeId: Number(accessTimeId),
-                            avatarUrl: null,
-                            votePoint: Number(votePoint),
-                            voteParticipantCount: Number(participantCount),
-                            isFavorited: false,
-                            categories: [],
-                            domainVerify: false,
-                            portalVerify: false
-                        });
-                    }
-                );
-                nextPageCursor = weeklyPopularProjects.pageCursor;
-                break;
-        }
+        countProjects = Number(apiResult.totalCount);
+        apiResult.projects.forEach(
+            ({ id, accessTimeId, totalVotePoint, totalVoteParticipantCount }) => {
+                projects.push({
+                    id,
+                    accessTimeId: Number(accessTimeId),
+                    avatarUrl: null,
+                    votePoint: Number(totalVotePoint),
+                    voteParticipantCount: totalVoteParticipantCount,
+                    isFavorited: false,
+                    categories: [],
+                    domainVerify: false,
+                    portalVerify: false
+                });
+            }
+        );
 
         const projectIds = projects.map((project) => project.accessTimeId);
 
@@ -242,8 +179,7 @@ export class PortalService {
         return {
             countProjects,
             maxPage: Math.floor(countProjects / limit),
-            projects,
-            pageCursor: nextPageCursor
+            projects
         };
     }
 
@@ -302,8 +238,7 @@ export class PortalService {
         return {
             countProjects: countUserFavorites,
             maxPage: Math.floor(countUserFavorites / limit),
-            projects,
-            pageCursor: null
+            projects
         };
     }
 

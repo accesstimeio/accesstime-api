@@ -6,7 +6,8 @@ import {
     Chain,
     extractDomain,
     StatisticTimeGap,
-    SUPPORTED_CHAIN
+    SUPPORTED_CHAIN,
+    SUPPORTED_SORT_TYPE
 } from "@accesstimeio/accesstime-common";
 
 import {
@@ -703,6 +704,81 @@ export class SubgraphService implements OnModuleInit {
         } catch (_err) {
             console.log(_err);
             throw new Error("[purchases]: Subgraph query failed!");
+        }
+    }
+
+    async apiListDeployments(
+        chainId: number,
+        address: Address,
+        page?: number
+    ): Promise<{ deployments: DeploymentDto[]; totalCount: string }> {
+        try {
+            const query = new URLSearchParams();
+            const limit = Number(process.env.PAGE_ITEM_LIMIT);
+
+            query.append("owner", address);
+            query.append("limit", limit.toString());
+            if (page) {
+                query.append("page", page.toString());
+            }
+
+            const result: { deployments: DeploymentDto[]; totalCount: string } = await (
+                await fetch(`${process.env.SUBGRAPH_URL}/deployment/${chainId}?${query.toString()}`)
+            ).json();
+
+            return result;
+        } catch (_err) {
+            throw new Error("[apiListDeployments]: Ponder API query failed!");
+        }
+    }
+
+    async apiPortalExplore(
+        chainId: number,
+        page?: number,
+        sort?: SUPPORTED_SORT_TYPE,
+        paymentMethods?: Address[]
+    ): Promise<{
+        projects: {
+            id: Address;
+            accessTimeId: number;
+            totalVotePoint: number;
+            totalVoteParticipantCount: number;
+        }[];
+        totalCount: string;
+    }> {
+        try {
+            const query = new URLSearchParams();
+            const limit = Number(process.env.PAGE_ITEM_LIMIT);
+            paymentMethods ??= [];
+
+            query.append("limit", limit.toString());
+            if (paymentMethods.length > 0) {
+                query.append("paymentMethods", paymentMethods.join(","));
+            }
+            if (page) {
+                query.append("page", page.toString());
+            }
+            if (sort) {
+                query.append("sort", sort);
+            }
+
+            const result: {
+                projects: {
+                    id: Address;
+                    accessTimeId: number;
+                    totalVotePoint: number;
+                    totalVoteParticipantCount: number;
+                }[];
+                totalCount: string;
+            } = await (
+                await fetch(
+                    `${process.env.SUBGRAPH_URL}/portal/explore/${chainId}?${query.toString()}`
+                )
+            ).json();
+
+            return result;
+        } catch (_err) {
+            throw new Error("[apiPortalExplore]: Ponder API query failed!");
         }
     }
 }
