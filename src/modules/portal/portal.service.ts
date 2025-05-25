@@ -1,7 +1,7 @@
 import { forwardRef, HttpException, HttpStatus, Inject, Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Document, Model } from "mongoose";
-import { Address, isAddress } from "viem";
+import { Address, isAddress, zeroAddress } from "viem";
 import { SUPPORTED_SORT_TYPE, Portal, extractDomain } from "@accesstimeio/accesstime-common";
 import { CACHE_MANAGER, Cache } from "@nestjs/cache-manager";
 
@@ -254,7 +254,9 @@ export class PortalService {
             .exec();
 
         const projects: ProjectCardDto[] = userFavorites.map((project) => ({
-            id: project.id,
+            id:
+                userFPD.find((pd) => pd.id == project.id && pd.chainId == project.chainId)
+                    ?.address ?? zeroAddress,
             chainId: project.chainId,
             avatarUrl:
                 userFPD.find((pd) => pd.id == project.id && pd.chainId == project.chainId)
