@@ -176,9 +176,12 @@ export class PortalService {
                 projectDocuments.find((pd) => pd.id == project.accessTimeId)?.portalVerify ?? false
         }));
 
+        const flooredMaxPage = Math.floor(countProjects / limit);
+        const maxPage = countProjects % limit > 0 ? flooredMaxPage + 1 : flooredMaxPage;
+
         return {
             countProjects,
-            maxPage: Math.floor(countProjects / limit),
+            maxPage,
             projects
         };
     }
@@ -235,9 +238,12 @@ export class PortalService {
             portalVerify: project.portalVerify
         }));
 
+        const flooredMaxPage = Math.floor(countUserFavorites / limit);
+        const maxPage = countUserFavorites % limit > 0 ? flooredMaxPage + 1 : flooredMaxPage;
+
         return {
             countProjects: countUserFavorites,
-            maxPage: Math.floor(countUserFavorites / limit),
+            maxPage,
             projects
         };
     }
