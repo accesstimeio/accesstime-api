@@ -758,6 +758,7 @@ export class SubgraphService implements OnModuleInit {
     ): Promise<{
         projects: {
             id: Address;
+            chainId: number;
             accessTimeId: number;
             totalVotePoint: number;
             totalVoteParticipantCount: number;
@@ -783,6 +784,7 @@ export class SubgraphService implements OnModuleInit {
             const result: {
                 projects: {
                     id: Address;
+                    chainId: number;
                     accessTimeId: number;
                     totalVotePoint: number;
                     totalVoteParticipantCount: number;

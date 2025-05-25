@@ -128,9 +128,16 @@ export class PortalService {
 
         countProjects = Number(apiResult.totalCount);
         apiResult.projects.forEach(
-            ({ id, accessTimeId, totalVotePoint, totalVoteParticipantCount }) => {
+            ({
+                id,
+                chainId: projectChainId,
+                accessTimeId,
+                totalVotePoint,
+                totalVoteParticipantCount
+            }) => {
                 projects.push({
                     id,
+                    chainId: projectChainId,
                     accessTimeId: Number(accessTimeId),
                     avatarUrl: null,
                     votePoint: Number(totalVotePoint),
@@ -146,34 +153,45 @@ export class PortalService {
         const projectIds = projects.map((project) => project.accessTimeId);
 
         const projectDocuments = await this.projectModel
-            .find({ chainId })
             .where("id")
             .in(projectIds)
-            .select(["id", "avatarUrl", "categories", "domainVerify", "portalVerify"])
+            .select(["id", "chainId", "avatarUrl", "categories", "domainVerify", "portalVerify"])
             .exec();
 
         let userFavorites: ProjectFavorite[] = [];
 
         if (user) {
             userFavorites = await this.projectFavoriteModel
-                .find({ chainId, user })
+                .find({ user })
                 .where("id")
                 .in(projectIds)
-                .select("id")
+                .select(["id", "chainId"])
                 .exec();
         }
 
         projects = projects.map((project) => ({
             ...project,
             avatarUrl:
-                projectDocuments.find((pd) => pd.id == project.accessTimeId)?.avatarUrl ?? null,
+                projectDocuments.find(
+                    (pd) => pd.id == project.accessTimeId && pd.chainId == project.chainId
+                )?.avatarUrl ?? null,
             categories:
-                projectDocuments.find((pd) => pd.id == project.accessTimeId)?.categories ?? [],
-            isFavorited: userFavorites.find((uf) => uf.id == project.accessTimeId) ? true : false,
+                projectDocuments.find(
+                    (pd) => pd.id == project.accessTimeId && pd.chainId == project.chainId
+                )?.categories ?? [],
+            isFavorited: userFavorites.find(
+                (uf) => uf.id == project.accessTimeId && uf.chainId == project.chainId
+            )
+                ? true
+                : false,
             domainVerify:
-                projectDocuments.find((pd) => pd.id == project.accessTimeId)?.domainVerify ?? false,
+                projectDocuments.find(
+                    (pd) => pd.id == project.accessTimeId && pd.chainId == project.chainId
+                )?.domainVerify ?? false,
             portalVerify:
-                projectDocuments.find((pd) => pd.id == project.accessTimeId)?.portalVerify ?? false
+                projectDocuments.find(
+                    (pd) => pd.id == project.accessTimeId && pd.chainId == project.chainId
+                )?.portalVerify ?? false
         }));
 
         const flooredMaxPage = Math.floor(countProjects / limit);
@@ -212,30 +230,47 @@ export class PortalService {
         }
 
         const userFavorites = await this.projectFavoriteModel
-            .find({ chainId, user })
+            .find(chainId == 0 ? { user } : { chainId, user })
             .limit(limit)
             .skip(skip)
-            .select("id")
+            .select(["id", "chainId"])
             .exec();
 
         const userFavoritedProjectIds = userFavorites.map((favorite) => favorite.id);
 
-        const userFavoriteProjectDocuments = await this.projectModel
+        const userFPD = await this.projectModel
             .find()
             .where("id")
             .in(userFavoritedProjectIds)
-            .select(["address", "avatarUrl", "categories", "domainVerify", "portalVerify"])
+            .select([
+                "id",
+                "address",
+                "chainId",
+                "avatarUrl",
+                "categories",
+                "domainVerify",
+                "portalVerify"
+            ])
             .exec();
 
-        const projects: ProjectCardDto[] = userFavoriteProjectDocuments.map((project) => ({
-            id: project.address,
-            avatarUrl: project.avatarUrl,
+        const projects: ProjectCardDto[] = userFavorites.map((project) => ({
+            id: project.id,
+            chainId: project.chainId,
+            avatarUrl:
+                userFPD.find((pd) => pd.id == project.id && pd.chainId == project.chainId)
+                    ?.avatarUrl ?? null,
             votePoint: 0,
             voteParticipantCount: 0,
             isFavorited: true,
-            categories: project.categories,
-            domainVerify: project.domainVerify,
-            portalVerify: project.portalVerify
+            categories:
+                userFPD.find((pd) => pd.id == project.id && pd.chainId == project.chainId)
+                    ?.categories ?? [],
+            domainVerify:
+                userFPD.find((pd) => pd.id == project.id && pd.chainId == project.chainId)
+                    ?.domainVerify ?? false,
+            portalVerify:
+                userFPD.find((pd) => pd.id == project.id && pd.chainId == project.chainId)
+                    ?.portalVerify ?? false
         }));
 
         const flooredMaxPage = Math.floor(countUserFavorites / limit);

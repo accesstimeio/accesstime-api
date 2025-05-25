@@ -14,4 +14,8 @@ export class DeploymentDto {
     @Expose()
     @ApiProperty()
     paused: boolean;
+
+    @Expose()
+    @ApiProperty()
+    chainId: number;
 }
