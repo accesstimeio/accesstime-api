@@ -3,7 +3,6 @@ import { ConfigModule } from "@nestjs/config";
 import * as Joi from "joi";
 import { MongooseModule } from "@nestjs/mongoose";
 import { RouterModule } from "@nestjs/core";
-import { ScheduleModule } from "@nestjs/schedule";
 import { minutes, ThrottlerModule } from "@nestjs/throttler";
 import { ThrottlerStorageRedisService } from "nestjs-throttler-storage-redis";
 
@@ -12,7 +11,6 @@ import { AppService } from "./app.service";
 import { SubgraphModule } from "./modules/subgraph/subgraph.module";
 import { DeploymentModule } from "./modules/deployment/deployment.module";
 import { ProjectModule } from "./modules/project/project.module";
-import { CronModule } from "./modules/cron/cron.module";
 import { PortalModule } from "./modules/portal/portal.module";
 import { PortalCreatorModule } from "./modules/portal-creator/portal-creator.module";
 import { NestMinioModule } from "nestjs-minio";
@@ -21,6 +19,7 @@ import { FactoryModule } from "./modules/factory/factory.module";
 import { StatisticModule } from "./modules/statistic/statistic.module";
 import { UserModule } from "./modules/user/user.module";
 import { AccountingModule } from "./modules/accounting/accounting.module";
+import { BullModule } from "@nestjs/bullmq";
 
 const NODE_ENV = process.env.NODE_ENV;
 
@@ -51,7 +50,6 @@ const NODE_ENV = process.env.NODE_ENV;
                 RRDA_URL: Joi.string().required()
             })
         }),
-        ScheduleModule.forRoot(),
         MongooseModule.forRootAsync({
             useFactory: () => ({
                 dbName: "api",
@@ -61,7 +59,6 @@ const NODE_ENV = process.env.NODE_ENV;
         SubgraphModule,
         DeploymentModule,
         ProjectModule,
-        CronModule,
         PortalModule,
         PortalCreatorModule,
         PortalLinkModule,
@@ -134,6 +131,20 @@ const NODE_ENV = process.env.NODE_ENV;
                     port: Number(process.env.REDIS_PORT),
                     password: process.env.REDIS_PASSWORD
                 })
+            })
+        }),
+        BullModule.forRootAsync({
+            useFactory: () => ({
+                defaultJobOptions: {
+                    attempts: 2,
+                    delay: 2000,
+                    removeOnComplete: true
+                },
+                connection: {
+                    host: process.env.REDIS_HOST,
+                    port: Number(process.env.REDIS_PORT),
+                    password: process.env.REDIS_PASSWORD
+                }
             })
         })
     ],

@@ -114,6 +114,64 @@ export class SubgraphService implements OnModuleInit {
             : { items: [], totalCount: 0, pageCursor: null, hasNextPage: false };
     }
 
+    async queueStatisticClear(data: { chainId: number; accessTimeId: number }) {
+        await this.statisticService.removeProjectStatistics(
+            data.chainId,
+            Number(data.accessTimeId)
+        );
+        await this.userService.removeProjectUsers(data.chainId, data.accessTimeId);
+        await this.accountingService.removeProjectIncomes(data.chainId, data.accessTimeId);
+    }
+
+    async queueDeploymentClear(data: {
+        chainId: number;
+        accessTimeId: string;
+        owner: Address;
+        prevOwner: Address;
+        website: string;
+    }) {
+        const projectDomain = await this.portalService.getProjectDomain(
+            data.chainId,
+            Number(data.accessTimeId)
+        );
+        if (projectDomain && projectDomain.domain != extractDomain(data.website)) {
+            await this.portalService.removeDomainVerify(data.chainId, Number(data.accessTimeId));
+        }
+
+        const lastOwner =
+            (await this.cacheService.get<Address>(
+                `${data.chainId}-project-id-${data.accessTimeId}-owner`
+            )) ?? null;
+        // current owner update job
+        await this.deploymentsService.removeLastDeployments(data.chainId, data.owner);
+        await this.deploymentsService.removeListDeployments(data.chainId, data.owner);
+        await this.projectService.removeProjectById(data.chainId, Number(data.accessTimeId));
+        // if owner transferred, clean both
+        if (lastOwner?.toLowerCase() != data.owner.toLowerCase()) {
+            const deleteThis =
+                lastOwner != null ? lastOwner.toLowerCase() : data.prevOwner.toLowerCase();
+            await this.deploymentsService.removeLastDeployments(
+                data.chainId,
+                deleteThis as Address
+            );
+            await this.deploymentsService.removeListDeployments(
+                data.chainId,
+                deleteThis as Address
+            );
+
+            await this.projectService.updateProjectOwner(
+                data.chainId,
+                Number(data.accessTimeId),
+                data.owner
+            );
+
+            await this.portalService.removeDomainVerify(data.chainId, Number(data.accessTimeId));
+        }
+    }
+
+    /**
+     * @deprecated Possible memory-leak and CronModule is removed, use queueDeploymentClear if possible
+     */
     async sync() {
         try {
             if (!this.syncBusy) {
@@ -132,57 +190,13 @@ export class SubgraphService implements OnModuleInit {
                             // check domain changes
                             const [, , , , , , currentDomain] =
                                 await factory.read.deploymentDetails([id]);
-                            const projectDomain = await this.portalService.getProjectDomain(
+                            await this.queueDeploymentClear({
                                 chainId,
-                                Number(accessTimeId)
-                            );
-                            if (
-                                projectDomain &&
-                                projectDomain.domain != extractDomain(currentDomain)
-                            ) {
-                                await this.portalService.removeDomainVerify(
-                                    chainId,
-                                    Number(accessTimeId)
-                                );
-                            }
-
-                            const lastOwner =
-                                (await this.cacheService.get<Address>(
-                                    `project-id-${accessTimeId}-owner`
-                                )) ?? null;
-                            // current owner update job
-                            await this.deploymentsService.removeLastDeployments(chainId, owner);
-                            await this.deploymentsService.removeListDeployments(chainId, owner);
-                            await this.projectService.removeProjectById(
-                                chainId,
-                                Number(accessTimeId)
-                            );
-                            // if owner transferred, clean both
-                            if (lastOwner?.toLowerCase() != owner.toLowerCase()) {
-                                const deleteThis =
-                                    lastOwner != null
-                                        ? lastOwner.toLowerCase()
-                                        : prevOwner.toLowerCase();
-                                await this.deploymentsService.removeLastDeployments(
-                                    chainId,
-                                    deleteThis as Address
-                                );
-                                await this.deploymentsService.removeListDeployments(
-                                    chainId,
-                                    deleteThis as Address
-                                );
-
-                                await this.projectService.updateProjectOwner(
-                                    chainId,
-                                    Number(accessTimeId),
-                                    owner
-                                );
-
-                                await this.portalService.removeDomainVerify(
-                                    chainId,
-                                    Number(accessTimeId)
-                                );
-                            }
+                                accessTimeId,
+                                owner,
+                                prevOwner,
+                                website: currentDomain
+                            });
                             // update last update timestamp
                             await this.cacheService.set("lastUpdateTimestamp", updateTimestamp, {
                                 ttl: 0
@@ -199,6 +213,9 @@ export class SubgraphService implements OnModuleInit {
         }
     }
 
+    /**
+     * @deprecated Possible memory-leak and CronModule is removed, use queueStatisticClear if possible
+     */
     async syncStatistics() {
         try {
             if (!this.syncStatisticsBusy) {
@@ -243,9 +260,10 @@ export class SubgraphService implements OnModuleInit {
                     for (let i3 = 0; i3 < clearQueue.length; i3++) {
                         const projectId = clearQueue[i3];
 
-                        await this.statisticService.removeProjectStatistics(chainId, projectId);
-                        await this.userService.removeProjectUsers(chainId, projectId);
-                        await this.accountingService.removeProjectIncomes(chainId, projectId);
+                        await this.queueStatisticClear({
+                            chainId,
+                            accessTimeId: projectId
+                        });
                     }
                 }
                 this.syncStatisticsBusy = false;
