@@ -1,6 +1,6 @@
 import { HttpException, HttpStatus, Inject, Injectable, forwardRef } from "@nestjs/common";
 import { CACHE_MANAGER, Cache } from "@nestjs/cache-manager";
-import { Address, Hash, isAddress, keccak256, zeroHash } from "viem";
+import { Address, isAddress } from "viem";
 
 import { LastDeploymentResponseDto, ListDeploymentResponseDto, RatesDto } from "./dto";
 
@@ -51,7 +51,7 @@ export class DeploymentService {
     async listDeployments(
         chainId: number,
         address: Address,
-        pageCursor?: string
+        page?: number
     ): Promise<ListDeploymentResponseDto> {
         const validAddress = isAddress(address);
 
@@ -64,30 +64,25 @@ export class DeploymentService {
             );
         }
 
-        const dataKey = `${chainId}-${address.toLowerCase()}-deployments-page-${keccak256((pageCursor as Hash) ?? zeroHash)}`;
+        const dataKey = `${chainId}-${address.toLowerCase()}-deployments-page-${page ? page : 0}`;
 
         const cachedData = await this.cacheService.get<ListDeploymentResponseDto>(dataKey);
 
         if (cachedData) {
             return cachedData;
         } else {
-            const deploymentCount = await this.subgraphService.countDeployments(chainId, address);
             const limit = Number(process.env.PAGE_ITEM_LIMIT);
 
-            const listDeployments = await this.subgraphService.listDeployments(
-                chainId,
-                address,
-                pageCursor
-            );
+            const apiResult = await this.subgraphService.apiListDeployments(chainId, address, page);
+            const deploymentCount = Number(apiResult.totalCount);
 
             const flooredMaxPage = Math.floor(deploymentCount / limit);
             const maxPage = deploymentCount % limit > 0 ? flooredMaxPage + 1 : flooredMaxPage;
 
             const response: ListDeploymentResponseDto = {
                 maxPage,
-                deployments: listDeployments.deployments,
-                totalCount: deploymentCount,
-                pageCursor: listDeployments.pageCursor
+                deployments: apiResult.deployments,
+                totalCount: deploymentCount
             };
 
             await this.cacheService.set(dataKey, response, {

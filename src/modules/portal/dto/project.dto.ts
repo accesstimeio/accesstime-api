@@ -40,6 +40,10 @@ export class ProjectCardDto {
 
     @Expose()
     @ApiProperty()
+    chainId: number;
+
+    @Expose()
+    @ApiProperty()
     avatarUrl: string | null;
 
     @Expose()
@@ -69,7 +73,7 @@ export class ProjectCardDto {
     categories: number[];
 }
 
-export class ProjectDto extends OmitType(ProjectCardDto, ["id"]) {
+export class ProjectDto extends OmitType(ProjectCardDto, ["id", "chainId"]) {
     @Expose()
     @ApiProperty({
         type: ProjectSocialDto,

@@ -55,8 +55,8 @@ export class PortalController {
         required: false
     })
     @ApiQuery({
-        name: "pageCursor",
-        type: String,
+        name: "page",
+        type: Number,
         required: false
     })
     @ApiResponse({
@@ -67,12 +67,12 @@ export class PortalController {
         @Param("chainId") chainId: number,
         @Query("sort") sort: SUPPORTED_SORT_TYPE,
         @Query("paymentMethods") paymentMethods: string,
-        @Query("pageCursor") pageCursor: string,
+        @Query("page") page: number,
         @Signer(false) signer: Address
     ) {
         const paymentMethods_: Address[] | undefined =
             paymentMethods && (paymentMethods.split(",") as Address[]);
-        return this.portalService.getExplore(chainId, sort, paymentMethods_, pageCursor, signer);
+        return this.portalService.getExplore(chainId, sort, paymentMethods_, page, signer);
     }
 
     @ApiHeaders([

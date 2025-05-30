@@ -21,8 +21,4 @@ export class ListDeploymentResponseDto {
     @Expose()
     @ApiProperty()
     totalCount: number;
-
-    @Expose()
-    @ApiProperty()
-    pageCursor: string | null;
 }

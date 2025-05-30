@@ -1,7 +1,7 @@
 import { forwardRef, HttpException, HttpStatus, Inject, Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Document, Model } from "mongoose";
-import { Address, isAddress } from "viem";
+import { Address, isAddress, zeroAddress } from "viem";
 import { SUPPORTED_SORT_TYPE, Portal, extractDomain } from "@accesstimeio/accesstime-common";
 import { CACHE_MANAGER, Cache } from "@nestjs/cache-manager";
 
@@ -74,7 +74,7 @@ export class PortalService {
         chainId: number,
         sort?: SUPPORTED_SORT_TYPE,
         paymentMethods?: Address[],
-        pageCursor?: string,
+        page?: number,
         user?: Address
     ): Promise<ExploreResponseDto> {
         const limit = Number(process.env.PAGE_ITEM_LIMIT);
@@ -118,132 +118,89 @@ export class PortalService {
         }
 
         let projects: CacheProject[] = [];
-        let nextPageCursor: string | null = null;
 
-        if (querySort != "weekly_popular") {
-            countProjects = await this.subgraphService.countProjects(chainId, paymentMethods);
-        } else {
-            countProjects = await this.subgraphService.countWeeklyVoteProjects(
-                chainId,
-                getEpochWeek(),
-                paymentMethods
-            );
-        }
+        const apiResult = await this.subgraphService.apiPortalExplore(
+            chainId,
+            page,
+            querySort,
+            paymentMethods
+        );
 
-        switch (querySort) {
-            case "newest":
-                const newestProjects = await this.subgraphService.newestProjects(
-                    chainId,
-                    paymentMethods,
-                    pageCursor
-                );
-
-                newestProjects.projects.forEach(
-                    ({ id, accessTimeId, totalVotePoint, totalVoteParticipantCount }) => {
-                        projects.push({
-                            id,
-                            accessTimeId: Number(accessTimeId),
-                            avatarUrl: null,
-                            votePoint: Number(totalVotePoint),
-                            voteParticipantCount: totalVoteParticipantCount,
-                            isFavorited: false,
-                            categories: [],
-                            domainVerify: false,
-                            portalVerify: false
-                        });
-                    }
-                );
-                nextPageCursor = newestProjects.pageCursor;
-                break;
-            case "top_rated":
-                const topRatedProjects = await this.subgraphService.topRatedProjects(
-                    chainId,
-                    paymentMethods,
-                    pageCursor
-                );
-
-                topRatedProjects.projects.forEach(
-                    ({ id, accessTimeId, totalVotePoint, totalVoteParticipantCount }) => {
-                        projects.push({
-                            id,
-                            accessTimeId: Number(accessTimeId),
-                            avatarUrl: null,
-                            votePoint: Number(totalVotePoint),
-                            voteParticipantCount: totalVoteParticipantCount,
-                            isFavorited: false,
-                            categories: [],
-                            domainVerify: false,
-                            portalVerify: false
-                        });
-                    }
-                );
-                nextPageCursor = topRatedProjects.pageCursor;
-                break;
-            default:
-                const weeklyPopularProjects = await this.subgraphService.weeklyPopularProjects(
-                    chainId,
-                    getEpochWeek(),
-                    paymentMethods,
-                    pageCursor
-                );
-
-                weeklyPopularProjects.projects.forEach(
-                    ({ accessTimeAddress, accessTimeId, votePoint, participantCount }) => {
-                        projects.push({
-                            id: accessTimeAddress,
-                            accessTimeId: Number(accessTimeId),
-                            avatarUrl: null,
-                            votePoint: Number(votePoint),
-                            voteParticipantCount: Number(participantCount),
-                            isFavorited: false,
-                            categories: [],
-                            domainVerify: false,
-                            portalVerify: false
-                        });
-                    }
-                );
-                nextPageCursor = weeklyPopularProjects.pageCursor;
-                break;
-        }
+        countProjects = Number(apiResult.totalCount);
+        apiResult.projects.forEach(
+            ({
+                id,
+                chainId: projectChainId,
+                accessTimeId,
+                totalVotePoint,
+                totalVoteParticipantCount
+            }) => {
+                projects.push({
+                    id,
+                    chainId: projectChainId,
+                    accessTimeId: Number(accessTimeId),
+                    avatarUrl: null,
+                    votePoint: Number(totalVotePoint),
+                    voteParticipantCount: totalVoteParticipantCount,
+                    isFavorited: false,
+                    categories: [],
+                    domainVerify: false,
+                    portalVerify: false
+                });
+            }
+        );
 
         const projectIds = projects.map((project) => project.accessTimeId);
 
         const projectDocuments = await this.projectModel
-            .find({ chainId })
             .where("id")
             .in(projectIds)
-            .select(["id", "avatarUrl", "categories", "domainVerify", "portalVerify"])
+            .select(["id", "chainId", "avatarUrl", "categories", "domainVerify", "portalVerify"])
             .exec();
 
         let userFavorites: ProjectFavorite[] = [];
 
         if (user) {
             userFavorites = await this.projectFavoriteModel
-                .find({ chainId, user })
+                .find({ user })
                 .where("id")
                 .in(projectIds)
-                .select("id")
+                .select(["id", "chainId"])
                 .exec();
         }
 
         projects = projects.map((project) => ({
             ...project,
             avatarUrl:
-                projectDocuments.find((pd) => pd.id == project.accessTimeId)?.avatarUrl ?? null,
+                projectDocuments.find(
+                    (pd) => pd.id == project.accessTimeId && pd.chainId == project.chainId
+                )?.avatarUrl ?? null,
             categories:
-                projectDocuments.find((pd) => pd.id == project.accessTimeId)?.categories ?? [],
-            isFavorited: userFavorites.find((uf) => uf.id == project.accessTimeId) ? true : false,
+                projectDocuments.find(
+                    (pd) => pd.id == project.accessTimeId && pd.chainId == project.chainId
+                )?.categories ?? [],
+            isFavorited: userFavorites.find(
+                (uf) => uf.id == project.accessTimeId && uf.chainId == project.chainId
+            )
+                ? true
+                : false,
             domainVerify:
-                projectDocuments.find((pd) => pd.id == project.accessTimeId)?.domainVerify ?? false,
+                projectDocuments.find(
+                    (pd) => pd.id == project.accessTimeId && pd.chainId == project.chainId
+                )?.domainVerify ?? false,
             portalVerify:
-                projectDocuments.find((pd) => pd.id == project.accessTimeId)?.portalVerify ?? false
+                projectDocuments.find(
+                    (pd) => pd.id == project.accessTimeId && pd.chainId == project.chainId
+                )?.portalVerify ?? false
         }));
+
+        const flooredMaxPage = Math.floor(countProjects / limit);
+        const maxPage = countProjects % limit > 0 ? flooredMaxPage + 1 : flooredMaxPage;
 
         return {
             countProjects,
-            maxPage: Math.floor(countProjects / limit),
-            projects,
-            pageCursor: nextPageCursor
+            maxPage,
+            projects
         };
     }
 
@@ -273,37 +230,58 @@ export class PortalService {
         }
 
         const userFavorites = await this.projectFavoriteModel
-            .find({ chainId, user })
+            .find(chainId == 0 ? { user } : { chainId, user })
             .limit(limit)
             .skip(skip)
-            .select("id")
+            .select(["id", "chainId"])
             .exec();
 
         const userFavoritedProjectIds = userFavorites.map((favorite) => favorite.id);
 
-        const userFavoriteProjectDocuments = await this.projectModel
+        const userFPD = await this.projectModel
             .find()
             .where("id")
             .in(userFavoritedProjectIds)
-            .select(["address", "avatarUrl", "categories", "domainVerify", "portalVerify"])
+            .select([
+                "id",
+                "address",
+                "chainId",
+                "avatarUrl",
+                "categories",
+                "domainVerify",
+                "portalVerify"
+            ])
             .exec();
 
-        const projects: ProjectCardDto[] = userFavoriteProjectDocuments.map((project) => ({
-            id: project.address,
-            avatarUrl: project.avatarUrl,
+        const projects: ProjectCardDto[] = userFavorites.map((project) => ({
+            id:
+                userFPD.find((pd) => pd.id == project.id && pd.chainId == project.chainId)
+                    ?.address ?? zeroAddress,
+            chainId: project.chainId,
+            avatarUrl:
+                userFPD.find((pd) => pd.id == project.id && pd.chainId == project.chainId)
+                    ?.avatarUrl ?? null,
             votePoint: 0,
             voteParticipantCount: 0,
             isFavorited: true,
-            categories: project.categories,
-            domainVerify: project.domainVerify,
-            portalVerify: project.portalVerify
+            categories:
+                userFPD.find((pd) => pd.id == project.id && pd.chainId == project.chainId)
+                    ?.categories ?? [],
+            domainVerify:
+                userFPD.find((pd) => pd.id == project.id && pd.chainId == project.chainId)
+                    ?.domainVerify ?? false,
+            portalVerify:
+                userFPD.find((pd) => pd.id == project.id && pd.chainId == project.chainId)
+                    ?.portalVerify ?? false
         }));
+
+        const flooredMaxPage = Math.floor(countUserFavorites / limit);
+        const maxPage = countUserFavorites % limit > 0 ? flooredMaxPage + 1 : flooredMaxPage;
 
         return {
             countProjects: countUserFavorites,
-            maxPage: Math.floor(countUserFavorites / limit),
-            projects,
-            pageCursor: null
+            maxPage,
+            projects
         };
     }
 

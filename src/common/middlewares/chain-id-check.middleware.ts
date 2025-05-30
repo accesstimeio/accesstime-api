@@ -16,7 +16,7 @@ export default class ChainIdCheckMiddleware implements NestMiddleware {
         } else {
             if (
                 isNaN(Number(foundChainId)) ||
-                !Chain.ids.includes(Number(foundChainId) as SUPPORTED_CHAIN)
+                ![...Chain.ids, 0].includes(Number(foundChainId) as SUPPORTED_CHAIN)
             ) {
                 throw new HttpException(
                     {
