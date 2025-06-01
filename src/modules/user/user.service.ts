@@ -1,8 +1,8 @@
 import { forwardRef, HttpException, HttpStatus, Inject, Injectable } from "@nestjs/common";
 import { CACHE_MANAGER, Cache } from "@nestjs/cache-manager";
-import { hashMessage, keccak256, zeroHash } from "viem";
+import { Address, hashMessage, keccak256, zeroHash } from "viem";
 
-import { ProjectUsersDto } from "./dto";
+import { ProjectUsersDto, UserSubscriptionsResponseDto } from "./dto";
 
 import { SubgraphService } from "../subgraph/subgraph.service";
 import { ProjectService } from "../project/project.service";
@@ -92,5 +92,27 @@ export class UserService {
 
             await this.cacheService.del(`${chainId}-${id}-project-user-pages`);
         }
+    }
+
+    async getUserSubscriptions(address: Address, page?: number) {
+        const limit = Number(process.env.PAGE_ITEM_LIMIT);
+
+        const apiResult = await this.subgraphService.apiUserSubscriptions(address, page);
+        const deploymentCount = Number(apiResult.totalCount);
+
+        const flooredMaxPage = Math.floor(deploymentCount / limit);
+        const maxPage = deploymentCount % limit > 0 ? flooredMaxPage + 1 : flooredMaxPage;
+
+        const response: UserSubscriptionsResponseDto = {
+            maxPage,
+            subscriptions: apiResult.subscriptions,
+            totalCount: deploymentCount
+        };
+
+        return response;
+    }
+
+    getUserSubscription(address: Address, chainId: number, accessTimeAddress: Address) {
+        return this.subgraphService.apiUserSubscription(address, chainId, accessTimeAddress);
     }
 }

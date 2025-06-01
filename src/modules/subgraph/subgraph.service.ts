@@ -51,6 +51,8 @@ import { FactoryService } from "../factory/factory.service";
 import { StatisticService } from "../statistic/statistic.service";
 import { UserService } from "../user/user.service";
 import { AccountingService } from "../accounting/accounting.service";
+import { SubscriptionDto } from "../user/dto/user-subscriptions.dto";
+import { UserSubscriptionResponseDto } from "../user/dto";
 
 @Injectable()
 export class SubgraphService implements OnModuleInit {
@@ -799,6 +801,47 @@ export class SubgraphService implements OnModuleInit {
             return result;
         } catch (_err) {
             throw new Error("[apiPortalExplore]: Ponder API query failed!");
+        }
+    }
+
+    async apiUserSubscriptions(
+        address: Address,
+        page?: number
+    ): Promise<{ subscriptions: SubscriptionDto[]; totalCount: string }> {
+        try {
+            const query = new URLSearchParams();
+            const limit = Number(process.env.PAGE_ITEM_LIMIT);
+
+            query.append("limit", limit.toString());
+            if (page) {
+                query.append("page", page.toString());
+            }
+
+            const result: { subscriptions: SubscriptionDto[]; totalCount: string } = await (
+                await fetch(`${process.env.SUBGRAPH_URL}/me/${address}?${query.toString()}`)
+            ).json();
+
+            return result;
+        } catch (_err) {
+            throw new Error("[apiUserSubscriptions]: Ponder API query failed!");
+        }
+    }
+
+    async apiUserSubscription(
+        address: Address,
+        chainId: number,
+        accessTimeAddress: Address
+    ): Promise<UserSubscriptionResponseDto> {
+        try {
+            const result: UserSubscriptionResponseDto = await (
+                await fetch(
+                    `${process.env.SUBGRAPH_URL}/me/${address}/${chainId}/${accessTimeAddress}`
+                )
+            ).json();
+
+            return result;
+        } catch (_err) {
+            throw new Error("[apiUserSubscription]: Ponder API query failed!");
         }
     }
 }
