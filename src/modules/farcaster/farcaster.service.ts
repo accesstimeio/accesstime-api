@@ -58,21 +58,24 @@ export class FarcasterService {
         fid: number,
         notificationDetails: FrameNotificationDetails
     ) {
-        const userDetails = await this.getUserDetails(fid);
-        if (userDetails != null) {
-            const newUser = new this.frameUserModel({
-                fid,
-                notificationDetails,
-                custodyAddress: userDetails.custody_address.toLowerCase(),
-                verifiedAddresses: [
-                    userDetails.verified_addresses.primary.eth_address.toLowerCase(),
-                    ...userDetails.verified_addresses.eth_addresses.map((address) =>
-                        address.toLowerCase()
-                    )
-                ]
-            });
+        const isAddedBefore = await this.getUserNotificationDetails(fid);
+        if (isAddedBefore == null) {
+            const userDetails = await this.getUserDetails(fid);
+            if (userDetails != null) {
+                const newUser = new this.frameUserModel({
+                    fid,
+                    notificationDetails,
+                    custodyAddress: userDetails.custody_address.toLowerCase(),
+                    verifiedAddresses: [
+                        userDetails.verified_addresses.primary.eth_address.toLowerCase(),
+                        ...userDetails.verified_addresses.eth_addresses.map((address) =>
+                            address.toLowerCase()
+                        )
+                    ]
+                });
 
-            newUser.save();
+                newUser.save();
+            }
         }
     }
 
