@@ -20,6 +20,7 @@ import { StatisticModule } from "./modules/statistic/statistic.module";
 import { UserModule } from "./modules/user/user.module";
 import { AccountingModule } from "./modules/accounting/accounting.module";
 import { BullModule } from "@nestjs/bullmq";
+import { FarcasterModule } from "./modules/farcaster/farcaster.module";
 
 const NODE_ENV = process.env.NODE_ENV;
 
@@ -47,7 +48,9 @@ const NODE_ENV = process.env.NODE_ENV;
                 MINIO_ACCESS_KEY: Joi.string().required(),
                 MINIO_SECRET_KEY: Joi.string().required(),
                 MINIO_BUCKET_NAME: Joi.string().required(),
-                RRDA_URL: Joi.string().required()
+                RRDA_URL: Joi.string().required(),
+                FARCASTER_APP_URL: Joi.string().required(),
+                NEYNAR_API_KEY: Joi.string().required()
             })
         }),
         MongooseModule.forRootAsync({
@@ -104,6 +107,15 @@ const NODE_ENV = process.env.NODE_ENV;
                         module: AccountingModule
                     }
                 ]
+            },
+            {
+                path: "me",
+                children: [
+                    {
+                        path: "farcaster",
+                        module: FarcasterModule
+                    }
+                ]
             }
         ]),
         NestMinioModule.registerAsync({
@@ -146,7 +158,8 @@ const NODE_ENV = process.env.NODE_ENV;
                     password: process.env.REDIS_PASSWORD
                 }
             })
-        })
+        }),
+        FarcasterModule
     ],
     controllers: [AppController],
     providers: [AppService]
