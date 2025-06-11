@@ -238,4 +238,36 @@ export class PortalController {
     ) {
         return this.portalService.checkDomainVerify(chainId, id, signer);
     }
+
+    @ApiHeaders([
+        {
+            name: "X-ACCESSTIME-AUTH-MESSAGE",
+            required: false
+        },
+        {
+            name: "X-ACCESSTIME-AUTH-SIGNATURE",
+            required: false
+        }
+    ])
+    @ApiQuery({
+        name: "name",
+        type: String,
+        required: true
+    })
+    @ApiQuery({
+        name: "page",
+        type: Number,
+        required: false
+    })
+    @ApiResponse({
+        type: ExploreResponseDto
+    })
+    @Get("/search")
+    async search(
+        @Query("name") name: string,
+        @Query("page") page: number,
+        @Signer(false) signer: Address
+    ) {
+        return this.portalService.search(name, page, signer);
+    }
 }

@@ -1,4 +1,4 @@
-import { forwardRef, MiddlewareConsumer, Module, NestModule } from "@nestjs/common";
+import { forwardRef, MiddlewareConsumer, Module, NestModule, RequestMethod } from "@nestjs/common";
 import { CacheModule } from "@nestjs/cache-manager";
 import * as redisStore from "cache-manager-redis-store";
 
@@ -29,6 +29,13 @@ import { ProjectModule } from "../project/project.module";
 })
 export class UserModule implements NestModule {
     configure(consumer: MiddlewareConsumer) {
-        consumer.apply(ChainIdCheckMiddleware).forRoutes(UserController);
+        consumer
+            .apply(ChainIdCheckMiddleware)
+            .exclude({
+                path: "dashboard/user/subscriptions/:address",
+                method: RequestMethod.GET,
+                version: ["1"]
+            })
+            .forRoutes(UserController);
     }
 }

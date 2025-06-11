@@ -77,9 +77,7 @@ export class PortalService {
         page?: number,
         user?: Address
     ): Promise<ExploreResponseDto> {
-        const limit = Number(process.env.PAGE_ITEM_LIMIT);
         let querySort: SUPPORTED_SORT_TYPE = Portal.defaultSortType;
-        let countProjects: number = 0;
 
         if (sort) {
             if (Portal.sortTypes.includes(sort)) {
@@ -117,8 +115,6 @@ export class PortalService {
             );
         }
 
-        let projects: CacheProject[] = [];
-
         const apiResult = await this.subgraphService.apiPortalExplore(
             chainId,
             page,
@@ -126,82 +122,12 @@ export class PortalService {
             paymentMethods
         );
 
-        countProjects = Number(apiResult.totalCount);
-        apiResult.projects.forEach(
-            ({
-                id,
-                chainId: projectChainId,
-                accessTimeId,
-                totalVotePoint,
-                totalVoteParticipantCount
-            }) => {
-                projects.push({
-                    id,
-                    chainId: projectChainId,
-                    accessTimeId: Number(accessTimeId),
-                    avatarUrl: null,
-                    votePoint: Number(totalVotePoint),
-                    voteParticipantCount: totalVoteParticipantCount,
-                    isFavorited: false,
-                    categories: [],
-                    domainVerify: false,
-                    portalVerify: false
-                });
-            }
+        return this.fillProjectDetails(
+            apiResult.projects,
+            Number(apiResult.totalCount),
+            Number(process.env.PAGE_ITEM_LIMIT),
+            user
         );
-
-        const projectIds = projects.map((project) => project.accessTimeId);
-
-        const projectDocuments = await this.projectModel
-            .where("id")
-            .in(projectIds)
-            .select(["id", "chainId", "avatarUrl", "categories", "domainVerify", "portalVerify"])
-            .exec();
-
-        let userFavorites: ProjectFavorite[] = [];
-
-        if (user) {
-            userFavorites = await this.projectFavoriteModel
-                .find({ user })
-                .where("id")
-                .in(projectIds)
-                .select(["id", "chainId"])
-                .exec();
-        }
-
-        projects = projects.map((project) => ({
-            ...project,
-            avatarUrl:
-                projectDocuments.find(
-                    (pd) => pd.id == project.accessTimeId && pd.chainId == project.chainId
-                )?.avatarUrl ?? null,
-            categories:
-                projectDocuments.find(
-                    (pd) => pd.id == project.accessTimeId && pd.chainId == project.chainId
-                )?.categories ?? [],
-            isFavorited: userFavorites.find(
-                (uf) => uf.id == project.accessTimeId && uf.chainId == project.chainId
-            )
-                ? true
-                : false,
-            domainVerify:
-                projectDocuments.find(
-                    (pd) => pd.id == project.accessTimeId && pd.chainId == project.chainId
-                )?.domainVerify ?? false,
-            portalVerify:
-                projectDocuments.find(
-                    (pd) => pd.id == project.accessTimeId && pd.chainId == project.chainId
-                )?.portalVerify ?? false
-        }));
-
-        const flooredMaxPage = Math.floor(countProjects / limit);
-        const maxPage = countProjects % limit > 0 ? flooredMaxPage + 1 : flooredMaxPage;
-
-        return {
-            countProjects,
-            maxPage,
-            projects
-        };
     }
 
     async getFavorites(
@@ -642,5 +568,121 @@ export class PortalService {
         }
 
         return { project, projectAddress, projectOwner };
+    }
+
+    async search(name: string, page?: number, user?: Address): Promise<ExploreResponseDto> {
+        const isValid = /^[a-zA-Z0-9 ]+$/.test(name);
+        const correctLength = name.replace(/[^a-zA-Z0-9 ]/g, "").trim().length > 3;
+        if (!isValid || !correctLength) {
+            throw new HttpException(
+                {
+                    errors: { message: "Searched project name is not acceptable." }
+                },
+                HttpStatus.NOT_ACCEPTABLE
+            );
+        }
+
+        const apiResult = await this.subgraphService.apiPortalSearch(
+            name.replace(/[^a-zA-Z0-9 ]/g, "").trim(),
+            page
+        );
+
+        return this.fillProjectDetails(
+            apiResult.results,
+            Number(apiResult.totalCount),
+            Number(process.env.PAGE_ITEM_LIMIT),
+            user
+        );
+    }
+
+    private async fillProjectDetails(
+        rawProjects: {
+            id: Address;
+            chainId: number;
+            accessTimeId: number;
+            totalVotePoint: number;
+            totalVoteParticipantCount: number;
+        }[],
+        countProjects: number,
+        limit: number,
+        user?: Address
+    ): Promise<ExploreResponseDto> {
+        let projects: CacheProject[] = [];
+
+        rawProjects.forEach(
+            ({
+                id,
+                chainId: projectChainId,
+                accessTimeId,
+                totalVotePoint,
+                totalVoteParticipantCount
+            }) => {
+                projects.push({
+                    id,
+                    chainId: projectChainId,
+                    accessTimeId: Number(accessTimeId),
+                    avatarUrl: null,
+                    votePoint: Number(totalVotePoint),
+                    voteParticipantCount: totalVoteParticipantCount,
+                    isFavorited: false,
+                    categories: [],
+                    domainVerify: false,
+                    portalVerify: false
+                });
+            }
+        );
+
+        const projectIds = projects.map((project) => project.accessTimeId);
+
+        const projectDocuments = await this.projectModel
+            .where("id")
+            .in(projectIds)
+            .select(["id", "chainId", "avatarUrl", "categories", "domainVerify", "portalVerify"])
+            .exec();
+
+        let userFavorites: ProjectFavorite[] = [];
+
+        if (user) {
+            userFavorites = await this.projectFavoriteModel
+                .find({ user })
+                .where("id")
+                .in(projectIds)
+                .select(["id", "chainId"])
+                .exec();
+        }
+
+        projects = projects.map((project) => ({
+            ...project,
+            avatarUrl:
+                projectDocuments.find(
+                    (pd) => pd.id == project.accessTimeId && pd.chainId == project.chainId
+                )?.avatarUrl ?? null,
+            categories:
+                projectDocuments.find(
+                    (pd) => pd.id == project.accessTimeId && pd.chainId == project.chainId
+                )?.categories ?? [],
+            isFavorited: userFavorites.find(
+                (uf) => uf.id == project.accessTimeId && uf.chainId == project.chainId
+            )
+                ? true
+                : false,
+            domainVerify:
+                projectDocuments.find(
+                    (pd) => pd.id == project.accessTimeId && pd.chainId == project.chainId
+                )?.domainVerify ?? false,
+            portalVerify:
+                projectDocuments.find(
+                    (pd) => pd.id == project.accessTimeId && pd.chainId == project.chainId
+                )?.portalVerify ?? false
+        }));
+
+        const flooredMaxPage = Math.floor(countProjects / limit);
+        const maxPage = countProjects % limit > 0 ? flooredMaxPage + 1 : flooredMaxPage;
+
+        return {
+            countProjects,
+            maxPage,
+            projects
+        };
     }
 }

@@ -30,6 +30,7 @@
   "dependencies": {
     "@accesstimeio/accesstime-common": "^1.2.6",
     "@accesstimeio/accesstime-sdk": "^1.0.3",
+    "@farcaster/frame-node": "^0.0.38",
     "@nestjs/bullmq": "^11.0.2",
     "@nestjs/cache-manager": "^2.2.2",
     "@nestjs/common": "^10.0.0",
@@ -39,6 +40,7 @@
     "@nestjs/platform-express": "^10.0.0",
     "@nestjs/swagger": "^7.3.1",
     "@nestjs/throttler": "^6.3.0",
+    "@neynar/nodejs-sdk": "^2.46.0",
     "bullmq": "^5.53.0",
     "cache-manager": "^4.1.0",
     "cache-manager-redis-store": "^2.0.0",
